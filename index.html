@@ -304,7 +304,7 @@
     <img data-logo src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" width="44" height="44" alt="" class="h-11 w-11 object-contain">
   </div>
   <div class="px-5 pt-4" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom))">
-    <p id="authDemo" class="mb-5 rounded-lg border border-gold/40 bg-gold/10 px-3 py-2 text-xs font-semibold leading-snug text-gold"><i class="fa-solid fa-flask mr-1" aria-hidden="true"></i><b>Modo demostración:</b> tu cuenta se guarda solo en este dispositivo (localStorage); todavía no hay un servidor.</p>
+    <p id="authDemo" class="mb-5 rounded-lg border border-gold/40 bg-gold/10 px-3 py-2 text-xs font-semibold leading-snug text-gold"><i class="fa-solid fa-flask mr-1" aria-hidden="true"></i><b>Modo demostración:</b> las cuentas con correo y contraseña se guardan solo en este dispositivo (localStorage).</p>
     <div id="panes"></div>
   </div>
 </section>
@@ -597,73 +597,102 @@
   // Cada uno debe devolver { name, email, phone } o lanzar un Error con el mensaje para mostrar al usuario.
   const getUsers = () => { try { return JSON.parse(localStorage.getItem('z18_users')) || []; } catch (e) { return []; } };
   const saveUsers = arr => { try { localStorage.setItem('z18_users', JSON.stringify(arr)); } catch (e) {} };
-  // ─── ⚙️ INICIO DE SESIÓN CON GOOGLE: ya está programado, solo falta pegar tu ID de cliente ───
-  //  1) console.cloud.google.com → APIs y servicios → Credenciales → Crear credenciales → ID de cliente de OAuth → «Aplicación web».
-  //  2) En «Orígenes autorizados de JavaScript» agregá  https://z18-web.vercel.app  (y http://localhost:3000 si probás en tu PC).
-  //     No hace falta «URI de redireccionamiento»: el botón abre la ventana emergente de Google.
-  //  3) Pantalla de consentimiento de OAuth: completá el nombre de la app y el correo de soporte, y publicala
-  //     (mientras esté en «Pruebas», solo entran los correos que agregues como usuarios de prueba).
-  //  4) Copiá el ID de cliente (termina en .apps.googleusercontent.com), pegalo entre las comillas de GOOGLE_CLIENT_ID y subí el archivo.
-  const SITE_URL = 'https://z18-web.vercel.app';   // dirección pública de la web (tiene que figurar en «Orígenes autorizados»)
-  const GOOGLE_CLIENT_ID = '';                     // ← pegá acá tu ID de cliente de Google
-  if (!GOOGLE_CLIENT_ID) console.info('[Z18] Google está listo para conectar: falta pegar GOOGLE_CLIENT_ID. Origen a autorizar: ' + SITE_URL);
-  else if (location.origin !== SITE_URL && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) console.warn('[Z18] Google solo funciona desde los orígenes autorizados. Estás en ' + location.origin + ' y la web oficial es ' + SITE_URL);
+  // ─── 🔥 ACCESO CON GOOGLE Y FACEBOOK · Firebase Authentication (ventana emergente con signInWithPopup) ───
+  //  Para que funcione en la web publicada, en console.firebase.google.com → proyecto z18-web-64b28 → Authentication:
+  //   1) Settings → Authorized domains → agregá  z18-web.vercel.app
+  //   2) Sign-in method → habilitá «Google» y «Facebook» (Facebook pide el App ID y el App secret de developers.facebook.com).
+  //   3) En tu app de Facebook → Facebook Login → Valid OAuth Redirect URIs → https://z18-web-64b28.firebaseapp.com/__/auth/handler
+  const FIREBASE_VERSION = '12.19.0';                  // firebase-app y firebase-auth SIEMPRE con la misma versión
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyADbG0ywKt-RAsaExZsGJ6dVXdI5iMsTkE",
+    authDomain: "z18-web-64b28.firebaseapp.com",
+    projectId: "z18-web-64b28",
+    storageBucket: "z18-web-64b28.firebasestorage.app",
+    messagingSenderId: "525311848484",
+    appId: "1:525311848484:web:75a5e99938675aa32f68b1",
+    measurementId: "G-F48SGPMW5Q"
+  };
+  const FB_CDN = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/`;
+  const IN_APP = /FBAN|FBAV|FB_IAB|Instagram|Line\/|Snapchat|MicroMessenger|TikTok|Bytedance/i.test(navigator.userAgent);   // navegador interno de una app (Instagram, Facebook…)
 
-  // Google Identity Services se descarga recién al abrir el módulo de cuenta (y solo si ya hay ID de cliente)
-  let gsiLoading = null;
-  const loadGsi = () => gsiLoading || (gsiLoading = new Promise((resolve, reject) => {
-    if (window.google && google.accounts && google.accounts.oauth2) return resolve();
-    const s = document.createElement('script');
-    s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => { gsiLoading = null; s.remove(); reject(new Error('No pudimos cargar Google. Revisá tu conexión e intentá de nuevo.')); };
-    document.head.appendChild(s);
-  }));
+  // El SDK se descarga recién al abrir el módulo de cuenta: la carta no carga peso extra.
+  let fb = null, fbLoading = null;
+  const loadFirebase = () => fbLoading || (fbLoading = (async () => {
+    const [app, authLib] = await Promise.all([import(FB_CDN + 'firebase-app.js'), import(FB_CDN + 'firebase-auth.js')]);
+    const auth = authLib.getAuth(app.initializeApp(FIREBASE_CONFIG));
+    auth.languageCode = 'es';
+    const google = new authLib.GoogleAuthProvider();
+    google.setCustomParameters({ prompt: 'select_account' });            // deja elegir la cuenta (útil en celulares compartidos)
+    const facebook = new authLib.FacebookAuthProvider();
+    facebook.addScope('email');
+    return (fb = { auth, providers: { Google: google, Facebook: facebook }, signInWithPopup: authLib.signInWithPopup, signOut: authLib.signOut });
+  })().catch(e => { fbLoading = null; throw e; }));
+
+  // Mensajes claros para el cliente (el detalle técnico queda en la consola del navegador)
+  const fbError = (e, provider) => {
+    const code = (e && e.code) || '';
+    console.error('[Z18] Firebase Auth (' + provider + '):', code || e);
+    const hint = IN_APP ? ' Estás en el navegador de una app: abrí esta página en Chrome o Safari.' : '';
+    switch (code) {
+      case 'auth/popup-closed-by-user':
+      case 'auth/cancelled-popup-request': return 'Cerraste la ventana antes de terminar. Probá de nuevo cuando quieras.' + hint;
+      case 'auth/popup-blocked': return `Tu navegador bloqueó la ventana de ${provider}. Permití las ventanas emergentes de este sitio y volvé a tocar el botón.` + hint;
+      case 'auth/network-request-failed': return 'No hay conexión. Revisá tu internet e intentá de nuevo.';
+      case 'auth/account-exists-with-different-credential': return 'Ese correo ya está registrado con otro método (por ejemplo Google). Entrá con ese método.';
+      case 'auth/user-disabled': return 'Esta cuenta está deshabilitada. Escribinos por WhatsApp y lo resolvemos.';
+      case 'auth/unauthorized-domain':
+      case 'auth/operation-not-allowed':
+      case 'auth/operation-not-supported-in-this-environment': return `El acceso con ${provider} todavía no está habilitado en este sitio. Por ahora usá tu correo y contraseña.`;
+      default: return `No pudimos conectar con ${provider}. Probá de nuevo o usá tu correo.` + hint;
+    }
+  };
+
+  // ¿Es la misma cuenta? Las de Google/Facebook se reconocen por uid (o por correo); las de correo, por correo.
+  const sameAccount = (a, b) => (!!b.uid && a.uid === b.uid) || (!!b.email && !!a.email && a.email.toLowerCase() === b.email.toLowerCase());
 
   const AUTH = {
     demo: true,
-    // Cuentas guardadas en este dispositivo (localStorage z18_users), todavía sin servidor.
+    // Cuentas con correo: guardadas en este dispositivo (localStorage z18_users), todavía sin servidor.
     // La contraseña se guarda sin cifrar: sirve para probar, no para producción real con clientes reales.
     async login({ email, password }) {
-      const u = getUsers().find(x => x.email.toLowerCase() === email.trim().toLowerCase());
-      if (u && !u.password && u.provider === 'google') throw new Error('Esa cuenta se creó con Google. Tocá el botón de Google para entrar.');
+      const mail = email.trim().toLowerCase();
+      const u = mail && getUsers().find(x => (x.email || '').toLowerCase() === mail);
+      if (u && !u.password && u.provider) { const P = u.provider === 'facebook' ? 'Facebook' : 'Google'; throw new Error(`Esa cuenta se creó con ${P}. Tocá el botón de ${P} para entrar.`); }
       if (!u || u.password !== password) throw new Error('Correo o contraseña incorrectos.');
       return { name: u.name, email: u.email, phone: u.phone, avatar: u.avatar };
     },
     async register({ first, last, email, phone, password }) {
       const users = getUsers(), mail = email.trim().toLowerCase();
-      const dup = users.find(x => x.email.toLowerCase() === mail);
-      if (dup) throw new Error(dup.provider === 'google' && !dup.password ? 'Ese correo ya se usa con Google. Tocá el botón de Google para entrar.' : 'Ya existe una cuenta con ese correo electrónico.');
+      const dup = users.find(x => (x.email || '').toLowerCase() === mail);
+      if (dup) {
+        const P = dup.provider === 'facebook' ? 'Facebook' : 'Google';
+        throw new Error(dup.provider && !dup.password ? `Ese correo ya se usa con ${P}. Tocá el botón de ${P} para entrar.` : 'Ya existe una cuenta con ese correo electrónico.');
+      }
       const u = { name: `${first} ${last}`.trim(), email: email.trim(), phone: phone.trim(), password };
       saveUsers([...users, u]);
       return { name: u.name, email: u.email, phone: u.phone };
     },
-    // Google: ventana emergente oficial (Google Identity Services) → nombre, correo verificado y foto.
-    // Facebook y Apple quedan como botones visibles; el aviso se muestra hasta que se conecten.
+    // Google y Facebook: ventana emergente de Firebase (signInWithPopup) → nombre, correo y foto de la cuenta.
+    // Apple queda como botón visible hasta que se conecte.
     async social(provider) {
-      if (provider !== 'Google') throw new Error(`El acceso con ${provider} todavía no está disponible. Usá Google o tu correo.`);
-      if (!GOOGLE_CLIENT_ID) throw new Error('El acceso con Google todavía no está disponible. Por ahora usá tu correo y contraseña.');
-      if (!(window.google && google.accounts && google.accounts.oauth2)) await loadGsi();   // si ya está cargado no hay «await»: la ventana se abre dentro del toque del usuario
-      const token = await new Promise((resolve, reject) => {
-        google.accounts.oauth2.initTokenClient({
-          client_id: GOOGLE_CLIENT_ID,
-          scope: 'openid email profile',
-          callback: r => r && r.access_token ? resolve(r.access_token) : reject(new Error('Google no autorizó el acceso. Probá de nuevo.')),
-          error_callback: e => reject(new Error(e && e.type === 'popup_closed' ? 'Cerraste la ventana de Google antes de terminar.' : 'No pudimos abrir la ventana de Google. Revisá que el navegador no la esté bloqueando.'))
-        }).requestAccessToken();
-      });
-      let p;
-      try {
-        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + token } });
-        if (!res.ok) throw new Error('http ' + res.status);
-        p = await res.json();
-      } catch (e) { throw new Error('Google no nos devolvió tus datos. Probá de nuevo.'); }
-      if (!p.email || p.email_verified === false) throw new Error('Tu cuenta de Google no tiene un correo verificado.');
-      const users = getUsers(), mail = p.email.trim().toLowerCase();
-      let u = users.find(x => x.email.toLowerCase() === mail);
-      if (!u) { u = { name: (p.name || p.email).trim(), email: p.email.trim(), phone: '', provider: 'google' }; saveUsers([...users, u]); }   // cuenta sin contraseña
-      const pic = /^https:\/\//.test(p.picture || '') ? p.picture : '';
-      return { name: u.name, email: u.email, phone: u.phone, avatar: u.avatar || pic };
+      if (provider !== 'Google' && provider !== 'Facebook') throw new Error(`El acceso con ${provider} todavía no está disponible. Usá Google, Facebook o tu correo.`);
+      let f = fb;
+      if (!f) {                                          // con el SDK ya cargado NO hay «await» antes del popup: así el navegador no lo bloquea
+        try { f = await loadFirebase(); }
+        catch (e) { console.error('[Z18] No se pudo cargar Firebase:', e); throw new Error('No pudimos conectar con el servicio de acceso. Revisá tu conexión e intentá de nuevo (si sigue igual, recargá la página).'); }
+      }
+      let cred;
+      try { cred = await f.signInWithPopup(f.auth, f.providers[provider]); }
+      catch (e) { throw new Error(fbError(e, provider)); }
+      const fu = cred.user, key = provider.toLowerCase();
+      const pd = (fu.providerData || []).find(p => p && p.email);
+      const email = (fu.email || (pd && pd.email) || '').trim();                      // Facebook a veces no comparte el correo
+      const name = (fu.displayName || (email && email.split('@')[0]) || 'Cliente Z18').trim();
+      const pic = /^https:\/\/[^"'\s)]+$/.test(fu.photoURL || '') ? fu.photoURL : '';
+      const users = getUsers();
+      let u = users.find(x => sameAccount(x, { uid: fu.uid, email }));
+      if (!u) { u = { name, email, phone: '', provider: key, uid: fu.uid }; saveUsers([...users, u]); }   // cuenta sin contraseña
+      return { name: u.name, email: u.email || email, phone: u.phone || '', avatar: u.avatar || pic, provider: key, uid: fu.uid };
     }
   };
 
@@ -801,7 +830,7 @@
   const openAuth = (view = user ? 'account' : 'login') => {
     $('auth').classList.remove('hidden'); $('authOverlay').classList.remove('hidden'); $('auth').inert = false;
     lock(true); document.body.style.overflow = 'hidden'; show(view);
-    if (GOOGLE_CLIENT_ID) loadGsi().catch(() => {});     // precarga Google para que el botón abra su ventana al instante
+    loadFirebase().catch(() => {});                       // precarga el acceso con Google/Facebook para que la ventana abra al instante
   };
   const closeAuth = () => {
     $('auth').classList.add('hidden'); $('authOverlay').classList.add('hidden'); $('auth').inert = true;
@@ -870,7 +899,7 @@
   $('upsellOverlay').onclick = () => { rejectUpsell(); };
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('upsell').classList.contains('hidden')) rejectUpsell(); });
   const signIn = u => {
-    user = { name: String(u.name || u.email).slice(0, 60), email: u.email, phone: u.phone || '', avatar: u.avatar || '' };
+    user = { name: String(u.name || u.email || 'Cliente Z18').slice(0, 60), email: u.email || '', phone: u.phone || '', avatar: u.avatar || '', provider: u.provider || '', uid: u.uid || '' };
     try { localStorage.setItem('z18_session', JSON.stringify(user)); } catch (e) {}
     paintUser(); closeAuth(); toast(`¡Hola, ${user.name}!`);
   };
@@ -879,7 +908,9 @@
   $('authOverlay').onclick = closeAuth;
   $('authBack').onclick = () => $('auth').dataset.view === 'register' ? show('login') : closeAuth();   // «Atrás»
   $('logout').onclick = () => {
+    const wasSocial = !!(user && user.provider);
     user = null; try { localStorage.removeItem('z18_session'); } catch (e) {}
+    if (wasSocial) loadFirebase().then(f => f.signOut(f.auth)).catch(() => {});   // cuenta de Google/Facebook: cierra también la sesión de Firebase
     paintUser(); closeAuth(); toast('Sesión cerrada');
   };
 
@@ -895,7 +926,7 @@
     reader.onload = () => {
       const dataUrl = reader.result;
       user = { ...user, avatar: dataUrl };
-      saveUsers(getUsers().map(u => u.email.toLowerCase() === user.email.toLowerCase() ? { ...u, avatar: dataUrl } : u));
+      saveUsers(getUsers().map(u => sameAccount(u, user) ? { ...u, avatar: dataUrl } : u));
       try { localStorage.setItem('z18_session', JSON.stringify(user)); } catch (e) {}
       paintUser(); toast('Foto de perfil actualizada');
     };
@@ -931,11 +962,11 @@
       t.setAttribute('aria-label', hidden ? 'Ocultar contraseña' : 'Mostrar contraseña');
       t.innerHTML = `<i class="fa-regular fa-eye${hidden ? '-slash' : ''}"></i>`;
     } else {                                             // botones sociales: Google / Facebook / Apple
-      const provider = t.dataset.social, ferr = t.closest('form').querySelector('.ferr');
-      ferr.textContent = ''; t.disabled = true; t.setAttribute('aria-busy', 'true');
+      const provider = t.dataset.social, ferr = t.closest('form').querySelector('.ferr'), all = document.querySelectorAll('[data-social]');
+      ferr.textContent = ''; all.forEach(b => { b.disabled = true; }); t.setAttribute('aria-busy', 'true');
       AUTH.social(provider).then(signIn)
         .catch(err => { ferr.textContent = err.message || `No pudimos conectar con ${provider}. Probá de nuevo.`; })
-        .finally(() => { t.disabled = false; t.removeAttribute('aria-busy'); });
+        .finally(() => { all.forEach(b => { b.disabled = false; }); t.removeAttribute('aria-busy'); });
     }
   });
 
