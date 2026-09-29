@@ -115,10 +115,8 @@
          font-size: .75rem; font-weight: 700; transition: transform .15s; }
   .soc:active { transform: scale(.96); }
   .soc:disabled { opacity: .55; cursor: progress; transform: none; }
-  /* Modo claro: el dorado sobre blanco no se lee; dentro del módulo de cuenta usamos un ámbar más oscuro */
-  [data-theme="light"] #authDemo { color: #7a4d00; background: rgba(255, 183, 0, .18); border-color: rgba(122, 77, 0, .35); }
   [data-theme="light"] #auth .lnk { color: #b45309; }
-  .soc-g { background: #fff; color: #1f1f1f; border-color: #dadce0; } .soc-f { background: #1877f2; color: #fff; } .soc-a { background: #000; color: #fff; border-color: #3f4454; }
+  .soc-g { background: #fff; color: #1f1f1f; border-color: #dadce0; } .soc-f { background: #1877f2; color: #fff; }
   .fade-in { animation: fadein .2s ease-out; }
   @keyframes fadein { from { opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .fade-in { animation: none; } }
@@ -304,7 +302,6 @@
     <img data-logo src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" width="44" height="44" alt="" class="h-11 w-11 object-contain">
   </div>
   <div class="px-5 pt-4" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom))">
-    <p id="authDemo" class="mb-5 rounded-lg border border-gold/40 bg-gold/10 px-3 py-2 text-xs font-semibold leading-snug text-gold"><i class="fa-solid fa-flask mr-1" aria-hidden="true"></i><b>Modo demostración:</b> las cuentas con correo y contraseña se guardan solo en este dispositivo (localStorage).</p>
     <div id="panes"></div>
   </div>
 </section>
@@ -591,16 +588,16 @@
   renderCart();
 
   /* ================= 5b) CUENTA: iniciar sesión, registro y perfil ================= */
-  // Por ahora las cuentas se guardan en este dispositivo (localStorage), todavía sin servidor real.
-  // ⚠️ PUNTO DE CONEXIÓN CON TU BACKEND: cuando tengas uno (Firebase Auth, Supabase, API propia…),
-  // reemplazá login/register/social por llamadas reales y poné demo: false.
-  // Cada uno debe devolver { name, email, phone } o lanzar un Error con el mensaje para mostrar al usuario.
+  // Google, Facebook y correo/contraseña entran por Firebase Authentication (definido más abajo).
+  // Lo único que queda en este dispositivo (localStorage z18_users) es el teléfono de contacto,
+  // porque Firebase no lo pide para estos métodos de acceso.
   const getUsers = () => { try { return JSON.parse(localStorage.getItem('z18_users')) || []; } catch (e) { return []; } };
   const saveUsers = arr => { try { localStorage.setItem('z18_users', JSON.stringify(arr)); } catch (e) {} };
-  // ─── 🔥 ACCESO CON GOOGLE Y FACEBOOK · Firebase Authentication (ventana emergente con signInWithPopup) ───
+  // ─── 🔥 ACCESO CON GOOGLE, FACEBOOK Y CORREO · Firebase Authentication ───
   //  Para que funcione en la web publicada, en console.firebase.google.com → proyecto z18-web-64b28 → Authentication:
   //   1) Settings → Authorized domains → agregá  z18-web.vercel.app
-  //   2) Sign-in method → habilitá «Google» y «Facebook» (Facebook pide el App ID y el App secret de developers.facebook.com).
+  //   2) Sign-in method → habilitá «Google», «Facebook» Y «Correo electrónico/contraseña»
+  //      (Facebook además pide el App ID y el App secret de developers.facebook.com).
   //   3) En tu app de Facebook → Facebook Login → Valid OAuth Redirect URIs → https://z18-web-64b28.firebaseapp.com/__/auth/handler
   const FIREBASE_VERSION = '12.19.0';                  // firebase-app y firebase-auth SIEMPRE con la misma versión
   const FIREBASE_CONFIG = {
@@ -625,7 +622,9 @@
     google.setCustomParameters({ prompt: 'select_account' });            // deja elegir la cuenta (útil en celulares compartidos)
     const facebook = new authLib.FacebookAuthProvider();
     facebook.addScope('email');
-    return (fb = { auth, providers: { Google: google, Facebook: facebook }, signInWithPopup: authLib.signInWithPopup, signOut: authLib.signOut });
+    return (fb = { auth, providers: { Google: google, Facebook: facebook }, signInWithPopup: authLib.signInWithPopup, signOut: authLib.signOut,
+                   signInWithEmailAndPassword: authLib.signInWithEmailAndPassword, createUserWithEmailAndPassword: authLib.createUserWithEmailAndPassword,
+                   updateProfile: authLib.updateProfile });
   })().catch(e => { fbLoading = null; throw e; }));
 
   // Mensajes claros para el cliente (el detalle técnico queda en la consola del navegador)
@@ -647,52 +646,72 @@
     }
   };
 
+  // Mismo criterio que fbError(), pero para signInWithEmailAndPassword / createUserWithEmailAndPassword
+  const emailError = e => {
+    const code = (e && e.code) || '';
+    console.error('[Z18] Firebase Auth (correo):', code || e);
+    switch (code) {
+      case 'auth/invalid-credential':
+      case 'auth/user-not-found':
+      case 'auth/wrong-password': return 'Correo o contraseña incorrectos.';
+      case 'auth/invalid-email': return 'Ingresá un correo válido.';
+      case 'auth/user-disabled': return 'Esta cuenta está deshabilitada. Escribinos por WhatsApp y lo resolvemos.';
+      case 'auth/email-already-in-use': return 'Ese correo ya tiene una cuenta. Si te registraste con Google o Facebook, entrá con ese botón; si no, iniciá sesión con tu contraseña.';
+      case 'auth/weak-password': return 'Usá una contraseña más segura (al menos 6 caracteres).';
+      case 'auth/too-many-requests': return 'Demasiados intentos. Esperá un momento y probá de nuevo.';
+      case 'auth/network-request-failed': return 'No hay conexión. Revisá tu internet e intentá de nuevo.';
+      case 'auth/operation-not-allowed': return 'El acceso con correo y contraseña todavía no está habilitado en este sitio.';
+      default: return 'No pudimos completar la acción. Probá de nuevo.';
+    }
+  };
+
   // ¿Es la misma cuenta? Las de Google/Facebook se reconocen por uid (o por correo); las de correo, por correo.
   const sameAccount = (a, b) => (!!b.uid && a.uid === b.uid) || (!!b.email && !!a.email && a.email.toLowerCase() === b.email.toLowerCase());
 
+  // Arma el objeto de sesión a partir de un usuario de Firebase (login por correo, Google o Facebook)
+  const fromFirebaseUser = fu => {
+    const pd = (fu.providerData || []).find(p => p && p.email);
+    const email = (fu.email || (pd && pd.email) || '').trim();                        // Facebook a veces no comparte el correo
+    const name = (fu.displayName || (email && email.split('@')[0]) || 'Cliente Z18').trim();
+    const pic = /^https:\/\/[^"'\s)]+$/.test(fu.photoURL || '') ? fu.photoURL : '';
+    const extra = getUsers().find(x => sameAccount(x, { uid: fu.uid, email }));       // teléfono guardado, y foto propia si la eligió
+    return { name, email, phone: (extra && extra.phone) || '', avatar: (extra && extra.avatar) || pic, uid: fu.uid };
+  };
+  const loadOrThrow = async () => {
+    if (fb) return fb;
+    try { return await loadFirebase(); }
+    catch (e) { console.error('[Z18] No se pudo cargar Firebase:', e); throw new Error('No pudimos conectar con el servicio de acceso. Revisá tu conexión e intentá de nuevo (si sigue igual, recargá la página).'); }
+  };
+
   const AUTH = {
-    demo: true,
-    // Cuentas con correo: guardadas en este dispositivo (localStorage z18_users), todavía sin servidor.
-    // La contraseña se guarda sin cifrar: sirve para probar, no para producción real con clientes reales.
+    // Correo y contraseña: Firebase Authentication (signInWithEmailAndPassword). El teléfono no lo pide
+    // Firebase para este método, así que queda guardado en este dispositivo (localStorage z18_users).
     async login({ email, password }) {
-      const mail = email.trim().toLowerCase();
-      const u = mail && getUsers().find(x => (x.email || '').toLowerCase() === mail);
-      if (u && !u.password && u.provider) { const P = u.provider === 'facebook' ? 'Facebook' : 'Google'; throw new Error(`Esa cuenta se creó con ${P}. Tocá el botón de ${P} para entrar.`); }
-      if (!u || u.password !== password) throw new Error('Correo o contraseña incorrectos.');
-      return { name: u.name, email: u.email, phone: u.phone, avatar: u.avatar };
+      const f = await loadOrThrow();
+      let cred;
+      try { cred = await f.signInWithEmailAndPassword(f.auth, email.trim(), password); }
+      catch (e) { throw new Error(emailError(e)); }
+      return fromFirebaseUser(cred.user);
     },
     async register({ first, last, email, phone, password }) {
-      const users = getUsers(), mail = email.trim().toLowerCase();
-      const dup = users.find(x => (x.email || '').toLowerCase() === mail);
-      if (dup) {
-        const P = dup.provider === 'facebook' ? 'Facebook' : 'Google';
-        throw new Error(dup.provider && !dup.password ? `Ese correo ya se usa con ${P}. Tocá el botón de ${P} para entrar.` : 'Ya existe una cuenta con ese correo electrónico.');
-      }
-      const u = { name: `${first} ${last}`.trim(), email: email.trim(), phone: phone.trim(), password };
-      saveUsers([...users, u]);
-      return { name: u.name, email: u.email, phone: u.phone };
+      const f = await loadOrThrow();
+      const name = `${first} ${last}`.trim();
+      let cred;
+      try {
+        cred = await f.createUserWithEmailAndPassword(f.auth, email.trim(), password);
+        await f.updateProfile(cred.user, { displayName: name }).catch(() => {});   // si falla, esta sesión ya tiene el nombre igual
+      } catch (e) { throw new Error(emailError(e)); }
+      saveUsers([...getUsers(), { uid: cred.user.uid, email: cred.user.email, phone: phone.trim() }]);
+      return { name, email: cred.user.email, phone: phone.trim(), uid: cred.user.uid };
     },
     // Google y Facebook: ventana emergente de Firebase (signInWithPopup) → nombre, correo y foto de la cuenta.
-    // Apple queda como botón visible hasta que se conecte.
     async social(provider) {
       if (provider !== 'Google' && provider !== 'Facebook') throw new Error(`El acceso con ${provider} todavía no está disponible. Usá Google, Facebook o tu correo.`);
-      let f = fb;
-      if (!f) {                                          // con el SDK ya cargado NO hay «await» antes del popup: así el navegador no lo bloquea
-        try { f = await loadFirebase(); }
-        catch (e) { console.error('[Z18] No se pudo cargar Firebase:', e); throw new Error('No pudimos conectar con el servicio de acceso. Revisá tu conexión e intentá de nuevo (si sigue igual, recargá la página).'); }
-      }
+      const f = await loadOrThrow();                      // si el SDK ya está cargado no hay «await» antes del popup: así el navegador no lo bloquea
       let cred;
       try { cred = await f.signInWithPopup(f.auth, f.providers[provider]); }
       catch (e) { throw new Error(fbError(e, provider)); }
-      const fu = cred.user, key = provider.toLowerCase();
-      const pd = (fu.providerData || []).find(p => p && p.email);
-      const email = (fu.email || (pd && pd.email) || '').trim();                      // Facebook a veces no comparte el correo
-      const name = (fu.displayName || (email && email.split('@')[0]) || 'Cliente Z18').trim();
-      const pic = /^https:\/\/[^"'\s)]+$/.test(fu.photoURL || '') ? fu.photoURL : '';
-      const users = getUsers();
-      let u = users.find(x => sameAccount(x, { uid: fu.uid, email }));
-      if (!u) { u = { name, email, phone: '', provider: key, uid: fu.uid }; saveUsers([...users, u]); }   // cuenta sin contraseña
-      return { name: u.name, email: u.email || email, phone: u.phone || '', avatar: u.avatar || pic, provider: key, uid: fu.uid };
+      return fromFirebaseUser(cred.user);
     }
   };
 
@@ -726,10 +745,9 @@
   const submitBtn = txt => `<button type="submit" class="btn-fire flex min-h-12 w-full items-center justify-center rounded-xl px-4 text-sm">${txt}</button>`;
   const social = title => `
     <p class="mb-3 mt-2 font-display text-2xl tracking-wide">${title}</p>
-    <div class="grid grid-cols-3 gap-2">
+    <div class="grid grid-cols-2 gap-2">
       <button type="button" data-social="Google" class="soc soc-g">${GOOGLE}Google</button>
       <button type="button" data-social="Facebook" class="soc soc-f"><i class="fa-brands fa-facebook-f text-lg"></i>Facebook</button>
-      <button type="button" data-social="Apple" class="soc soc-a"><i class="fa-brands fa-apple text-xl"></i>Apple</button>
     </div>`;
 
   $('panes').innerHTML = `
@@ -824,7 +842,6 @@
     document.querySelectorAll('#auth [aria-invalid]').forEach(i => i.removeAttribute('aria-invalid'));
     $('auth').dataset.view = view;
     $('auth').setAttribute('aria-labelledby', view + 'Title');
-    $('authDemo').hidden = !AUTH.demo || view === 'account';
     (document.querySelector(`[data-pane="${view}"] input`) || $('logout')).focus();
   };
   const openAuth = (view = user ? 'account' : 'login') => {
@@ -899,7 +916,7 @@
   $('upsellOverlay').onclick = () => { rejectUpsell(); };
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('upsell').classList.contains('hidden')) rejectUpsell(); });
   const signIn = u => {
-    user = { name: String(u.name || u.email || 'Cliente Z18').slice(0, 60), email: u.email || '', phone: u.phone || '', avatar: u.avatar || '', provider: u.provider || '', uid: u.uid || '' };
+    user = { name: String(u.name || u.email || 'Cliente Z18').slice(0, 60), email: u.email || '', phone: u.phone || '', avatar: u.avatar || '', uid: u.uid || '' };
     try { localStorage.setItem('z18_session', JSON.stringify(user)); } catch (e) {}
     paintUser(); closeAuth(); toast(`¡Hola, ${user.name}!`);
   };
@@ -908,9 +925,8 @@
   $('authOverlay').onclick = closeAuth;
   $('authBack').onclick = () => $('auth').dataset.view === 'register' ? show('login') : closeAuth();   // «Atrás»
   $('logout').onclick = () => {
-    const wasSocial = !!(user && user.provider);
     user = null; try { localStorage.removeItem('z18_session'); } catch (e) {}
-    if (wasSocial) loadFirebase().then(f => f.signOut(f.auth)).catch(() => {});   // cuenta de Google/Facebook: cierra también la sesión de Firebase
+    loadFirebase().then(f => f.signOut(f.auth)).catch(() => {});   // correo, Google o Facebook: las 3 cierran sesión en Firebase
     paintUser(); closeAuth(); toast('Sesión cerrada');
   };
 
@@ -961,7 +977,7 @@
       i.type = hidden ? 'text' : 'password';
       t.setAttribute('aria-label', hidden ? 'Ocultar contraseña' : 'Mostrar contraseña');
       t.innerHTML = `<i class="fa-regular fa-eye${hidden ? '-slash' : ''}"></i>`;
-    } else {                                             // botones sociales: Google / Facebook / Apple
+    } else {                                             // botones sociales: Google / Facebook
       const provider = t.dataset.social, ferr = t.closest('form').querySelector('.ferr'), all = document.querySelectorAll('[data-social]');
       ferr.textContent = ''; all.forEach(b => { b.disabled = true; }); t.setAttribute('aria-busy', 'true');
       AUTH.social(provider).then(signIn)
