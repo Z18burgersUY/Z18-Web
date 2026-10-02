@@ -129,6 +129,10 @@
   .fav-star.is-fav svg { fill: currentColor; }
   .menu-card.is-fav-card { border-color: #ffb700 !important; box-shadow: 0 0 0 1px #ffb700, 0 12px 30px -10px rgba(255, 183, 0, .5); }
   @media (prefers-reduced-motion: reduce) { .fav-star { transition: none; } .fav-star:hover, .fav-star:active { transform: none; } }
+  /* Contador de Puntos Z: pequeño "pop" cuando suma */
+  @keyframes zpop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  .z-pop { animation: zpop .6s ease; }
+  @media (prefers-reduced-motion: reduce) { .z-pop { animation: none; } }
   .soc-g { background: #fff; color: #1f1f1f; border-color: #dadce0; } .soc-f { background: #1877f2; color: #fff; }
   .fade-in { animation: fadein .2s ease-out; }
   @keyframes fadein { from { opacity: 0; } }
@@ -411,7 +415,7 @@
   const waRaw = t => `https://wa.me/${WA}?text=${encodeURIComponent(t)}`;                       // enlace con mensaje codificado
   const wa = t => waRaw('¡Hola Z18! ' + (t ? 'Quiero consultar por: ' + t : 'Quiero hacer un pedido.'));
   const PRICE = {};                                                                              // nombre → precio (se completa al renderizar)
-  let favoriteBurger = '', paymentMethod = '', kitchenNotes = '', userOrders = [], prefsDirty = false;   // perfil del cliente (se carga de Firestore al iniciar sesión)
+  let favoriteBurger = '', paymentMethod = '', kitchenNotes = '', userOrders = [], prefsDirty = false, puntosZ = 0;   // perfil del cliente (se carga de Firestore al iniciar sesión)
   let user = null;                                                                               // sesión (solo nombre y correo; nunca la contraseña)
   const PANELS = ['cart', 'overlay', 'auth', 'authOverlay', 'upsell', 'upsellOverlay'];
   // Deja inerte (sin foco ni clics) el resto de la página mientras hay un panel abierto
@@ -508,10 +512,33 @@
     .forEach(c => mapCat(c, MENU[c]));
   CATEGORY_OF[MENU.crispy.n] = 'crispy';
 
+  /* ── PUNTOS Z · catálogo de recompensas ───────────────────────────────────────────────
+     Regla del programa: cada $50 de compra = 1 Punto Z (Z18 entrega un código con los puntos de cada pedido).
+     ✏️ Para cambiar costos o productos editá SOLO esta lista. Si "name" es un producto del menú se muestra con su foto y su valor;
+        si no lo es (ej. "Salsa extra") se muestra con un ícono y se suma al carrito a $0 igual. */
+  const PESOS_POR_PUNTO_Z = 50;
+  const findMenuItem = n => {
+    for (const c of ['burgers', 'combos', 'napo', 'pizzas', 'promos', 'kids', 'minutas', 'drinks']) {
+      const hit = (MENU[c] || []).find(x => x.n === n);
+      if (hit) return hit;
+    }
+    return MENU.crispy.n === n ? MENU.crispy : null;
+  };
+  const RECOMPENSAS_Z = [
+    { name: 'Salsa extra', cost: 15, icon: 'fa-pepper-hot' },
+    { name: 'Coca-Cola 600 ml', cost: 35 }, { name: 'Smith44 (473 ml)', cost: 35 },
+    { name: 'Papas fritas', cost: 70 }, { name: 'Coca-Cola 1.5 L', cost: 70 },
+    { name: 'Z18 Original', cost: 140 },
+    { name: 'Combo Z18 Original', cost: 170 }
+  ].map(r => ({ ...r, item: findMenuItem(r.name) }));
+  const REWARD_SUFFIX = / \(canje \d+ Puntos Z\)$/;                           // sufijo de los ítems canjeados dentro del carrito
+  const redeemName = r => `${r.name} (canje ${r.cost} Puntos Z)`;
+  RECOMPENSAS_Z.forEach(r => { PRICE[redeemName(r)] = 0; });                   // un canje cuesta $0 (también al recargar con el carrito guardado)
+
   /* ================= 5) CARRITO ================= */
   let cart = {};                                                     // { nombre: cantidad }
   try { cart = JSON.parse(localStorage.getItem('z18-cart')) || {}; } catch (e) { cart = {}; }
-  Object.keys(cart).forEach(n => { if (!PRICE[n] || !(cart[n] > 0)) delete cart[n]; });   // descarta productos que ya no existen
+  Object.keys(cart).forEach(n => { if (PRICE[n] === undefined || !(cart[n] > 0)) delete cart[n]; });   // descarta productos que ya no existen
 
   const count = () => Object.values(cart).reduce((a, b) => a + b, 0);
   const total = () => Object.entries(cart).reduce((s, [n, q]) => s + PRICE[n] * q, 0);
@@ -581,6 +608,10 @@
       if (raw === undefined) return;
       const n = decodeURIComponent(raw);
       if (!(n in PRICE)) return;                       // producto desconocido: no rompe el carrito
+      if (REWARD_SUFFIX.test(n)) {                     // un canje de Puntos Z es de a una unidad (otra unidad = otro canje)
+        if (b.dataset.inc !== undefined) { toast('Cada canje es una unidad. Para otra, canjeala de nuevo en Mi cuenta.'); return; }
+        if (b.dataset.dec !== undefined) toast('Quitaste el canje. Los Puntos Z usados no se devuelven.');
+      }
       change(n, b.dataset.dec !== undefined ? -1 : 1);
       if (b.dataset.add !== undefined) {
         toast(`Agregado: ${n}`);
@@ -605,7 +636,11 @@
   $('cartClose').onclick = $('overlay').onclick = () => setCart(false);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('cart').inert) setCart(false); });
   $('note').addEventListener('input', updateSend);
-  $('clear').onclick = () => { cart = {}; renderCart(); };
+  $('clear').onclick = () => {
+    const keep = {}; Object.keys(cart).forEach(n => { if (REWARD_SUFFIX.test(n)) keep[n] = cart[n]; });   // los canjes ya se pagaron con puntos: no se borran solos
+    cart = keep; renderCart();
+    if (Object.keys(keep).length) toast('Vaciamos tu carrito. Tus canjes de Puntos Z se mantienen.');
+  };
   renderCart();
 
   /* ================= 5b) CUENTA: iniciar sesión, registro y perfil ================= */
@@ -622,18 +657,60 @@
   //      (Facebook además pide el App ID y el App secret de developers.facebook.com).
   //   3) En tu app de Facebook → Facebook Login → Valid OAuth Redirect URIs → https://z18-web-64b28.firebaseapp.com/__/auth/handler
   //   4) Firestore Database → Crear base de datos (modo Nativo) → elegí una región (ej. southamerica-east1).
-  //   5) Firestore → pestaña Rules → pegá esto y publicá (para que cada cliente solo pueda leer/escribir SUS PROPIOS datos):
+  //   5) Firestore → pestaña Rules → borrá lo que haya, pegá TODO esto y publicá (también está en el archivo firestore.rules):
   //        rules_version = '2';
   //        service cloud.firestore {
   //          match /databases/{database}/documents {
+  //
+  //            // ── Clientes: cada uno lee y escribe SOLO lo suyo ─────────────────────────────────
   //            match /users/{uid} {
-  //              allow read, write: if request.auth != null && request.auth.uid == uid;
+  //              allow read: if request.auth != null && request.auth.uid == uid;
+  //
+  //              // Los Puntos Z (campo "points") NO se pueden subir a mano: solo suben cuando, en la MISMA operación,
+  //              // se quema un código sin usar y el aumento es exactamente lo que vale ese código.
+  //              // Sí pueden bajar (al canjear una recompensa).
+  //              allow create: if request.auth != null && request.auth.uid == uid
+  //                            && (puntosNuevos() == 0 || sumaPorCodigo(0));
+  //              allow update: if request.auth != null && request.auth.uid == uid
+  //                            && ((puntosNuevos() <= puntosActuales() && puntosNuevos() >= 0)
+  //                                || sumaPorCodigo(puntosActuales()));
+  //
   //              match /orders/{orderId} {
   //                allow read, write: if request.auth != null && request.auth.uid == uid;
   //              }
   //            }
+  //
+  //            // ── Códigos de Puntos Z: los crea Z18 desde la consola de Firebase ───────────────
+  //            match /codigos_puntos/{codigo} {
+  //              allow get: if request.auth != null;      // se puede consultar un código si se conoce...
+  //              allow list: if false;                    // ...pero no se pueden listar todos
+  //              allow create, delete: if false;          // desde la web nadie puede inventar ni borrar códigos
+  //              // Lo único permitido: "quemar" un código sin usar (usado: false -> true) sin tocar sus puntos
+  //              allow update: if request.auth != null
+  //                            && resource.data.usado == false
+  //                            && request.resource.data.usado == true
+  //                            && request.resource.data.puntos == resource.data.puntos
+  //                            && request.resource.data.canjeado_por == request.auth.uid
+  //                            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usado', 'fecha_canje', 'canjeado_por']);
+  //            }
+  //
+  //            // ── Funciones auxiliares ─────────────────────────────────────────────────────────
+  //            function puntosNuevos()   { return request.resource.data.get('points', 0); }
+  //            function puntosActuales() { return resource.data.get('points', 0); }
+  //            function sumaPorCodigo(base) {
+  //              let codigo = request.resource.data.get('lastCode', '');
+  //              let ruta = /databases/$(database)/documents/codigos_puntos/$(codigo);
+  //              return codigo is string && codigo.size() > 0
+  //                  && get(ruta).data.usado == false
+  //                  && getAfter(ruta).data.usado == true
+  //                  && getAfter(ruta).data.canjeado_por == request.auth.uid
+  //                  && puntosNuevos() == base + get(ruta).data.puntos;
+  //            }
   //          }
   //        }
+  //   6) Puntos Z: en Firestore creá la colección «codigos_puntos». Cada código es un documento cuyo ID es el código en MAYÚSCULAS
+  //      (ej. Z18-8F3K9Q) con dos campos: puntos (number, ej. 15) y usado (boolean, false). Usá códigos largos y al azar
+  //      (no Z18-0001, Z18-0002...) para que nadie pueda adivinarlos. Los códigos los crea Z18 a mano: la web no puede crearlos.
   const FIREBASE_VERSION = '12.19.0';                  // firebase-app y firebase-auth SIEMPRE con la misma versión
   const FIREBASE_CONFIG = {
     apiKey: "AIzaSyADbG0ywKt-RAsaExZsGJ6dVXdI5iMsTkE",
@@ -664,8 +741,8 @@
     return (fb = { auth, db, providers: { Google: google, Facebook: facebook }, signInWithPopup: authLib.signInWithPopup, signOut: authLib.signOut,
                    signInWithEmailAndPassword: authLib.signInWithEmailAndPassword, createUserWithEmailAndPassword: authLib.createUserWithEmailAndPassword,
                    updateProfile: authLib.updateProfile,
-                   // Favorita, preferencias e historial de pedidos: todo vive en Firestore, en users/{uid} y users/{uid}/orders
-                   doc: storeLib.doc, getDoc: storeLib.getDoc, setDoc: storeLib.setDoc,
+                   // Favorita, preferencias, Puntos Z e historial: todo vive en Firestore (users/{uid}, users/{uid}/orders y codigos_puntos/{código})
+                   doc: storeLib.doc, getDoc: storeLib.getDoc, setDoc: storeLib.setDoc, runTransaction: storeLib.runTransaction,
                    collection: storeLib.collection, query: storeLib.query, orderBy: storeLib.orderBy, limit: storeLib.limit, getDocs: storeLib.getDocs,
                    serverTimestamp: storeLib.serverTimestamp });
   })().catch(e => { fbLoading = null; throw e; }));
@@ -833,6 +910,28 @@
       </div>
       <div class="panel !p-4"><p class="text-xs text-muted">Sesión iniciada como</p><p id="accName" class="text-lg font-bold text-ink"></p><p id="accMail" class="break-all text-sm text-muted"></p><p id="accPhone" class="text-sm text-muted"></p></div>
 
+      <div class="panel !p-4" id="puntosZ">
+        <div class="text-center">
+          <p class="text-xs font-semibold uppercase tracking-wide text-muted"><i class="fa-solid fa-coins text-gold" aria-hidden="true"></i> Tus Puntos Z</p>
+          <p id="zBalance" class="font-display text-6xl leading-none text-gold" aria-live="polite">0</p>
+          <p class="mt-1 text-xs text-muted">Cada $50 de compra = 1 Punto Z</p>
+        </div>
+        <form id="zCodeForm" class="mt-4" autocomplete="off" novalidate>
+          <label for="zCode" class="mb-1 block text-xs font-semibold text-muted">¿Tenés un código de tu pedido?</label>
+          <div class="flex gap-2">
+            <input id="zCode" type="text" maxlength="40" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Z18-XXXXXX" class="inp min-w-0 flex-1 uppercase tracking-wider">
+            <button id="zCodeBtn" type="submit" class="btn-fire min-h-12 shrink-0 rounded-xl px-4 text-xs">Canjear Código</button>
+          </div>
+          <p id="zCodeMsg" role="status" aria-live="polite" class="mt-2 min-h-[1.25rem] text-xs"></p>
+        </form>
+      </div>
+
+      <div>
+        <h3 class="mb-1 font-display text-2xl tracking-wide">Recompensas Z</h3>
+        <p class="mb-3 text-xs text-muted">Tocá Canjear dos veces para confirmar. El producto se suma a tu carrito a $0.</p>
+        <div id="zRewards" class="grid grid-cols-2 gap-3"></div>
+      </div>
+
       <div class="panel !p-4">
         <p class="mb-2 text-sm font-semibold text-ink"><i class="fa-solid fa-star text-gold"></i> Mi hamburguesa favorita</p>
         <div id="favBox"></div>
@@ -934,10 +1033,11 @@
 
   // ¿El carrito actual ya trae papas de algún tipo? (Condición A si true, Condición B si false)
   const cartHasPapas = () => Object.keys(cart).some(n => {
-    const cat = CATEGORY_OF[n];
+    const base = n.replace(REWARD_SUFFIX, '');                        // un ítem canjeado cuenta como el producto real que es
+    const cat = CATEGORY_OF[base];
     if (PAPAS_ALWAYS_CATS.includes(cat)) return true;
-    if (cat === 'milas' && /papas/i.test(n)) return true;            // ej: "...+ porción de papas fritas"
-    if (cat === 'minutas' && PAPAS_MINUTAS.includes(n)) return true;
+    if (cat === 'milas' && /papas/i.test(base)) return true;          // ej: "...+ porción de papas fritas"
+    if (cat === 'minutas' && PAPAS_MINUTAS.includes(base)) return true;
     return false;
   });
 
@@ -996,9 +1096,140 @@
   $('upsellYes').onclick = () => { vibrate(); acceptUpsell(); };
   $('upsellOverlay').onclick = () => { rejectUpsell(); };
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('upsell').classList.contains('hidden')) rejectUpsell(); });
-  /* ── Perfil: favorita (⭐ del menú), preferencias e historial de pedidos — todo en Firestore, users/{uid} ── */
+  /* ── Perfil: favorita (⭐ del menú), Puntos Z, preferencias e historial — todo en Firestore ── */
   const PAY_METHODS = ['Efectivo', 'Transferencia', 'Débito'];
   const FAV_ITEMS = [MENU.crispy, ...MENU.burgers];                     // las hamburguesas que llevan estrella
+
+  /* ══════════════════════════════ PUNTOS Z ═══════════════════════════════════════════
+     Cómo funciona, de punta a punta:
+       1. El cliente hace un pedido y Z18 le entrega un CÓDIGO de un solo uso (ej. Z18-8F3K9Q) con los puntos que le tocan
+          ($50 = 1 punto). Cada código es un documento de Firestore:   codigos_puntos/{CÓDIGO}  →  { puntos: 15, usado: false }
+       2. El cliente lo escribe en "Mi cuenta" y validarCodigoZ() lo valida EN LA NUBE, lo "quema" (usado = true) y le suma los
+          puntos a su cuenta (users/{uid}.points) en UNA SOLA operación atómica (transacción): si dos personas ingresan el mismo
+          código a la vez, solo una lo consigue, y un código nunca queda quemado sin haber dado sus puntos.
+       3. El saldo vive en Firestore, atado a la cuenta del cliente (NO en el celular): editar localStorage no sirve de nada.
+          Las reglas de Firestore (paso 5 de las instrucciones, arriba) impiden subir los puntos "a mano". */
+  let canjeArmado = null, canjeTimer = null, canjeando = false;         // recompensa que espera la 2ª pulsación / canje en curso
+  class ErrorZ extends Error {}                                         // errores "para mostrar" al cliente (código inexistente, ya usado...)
+  const ptsTxt = n => `${n} ${n === 1 ? 'Punto Z' : 'Puntos Z'}`;
+  const CODIGO_Z_RE = /^[A-Z0-9][A-Z0-9_-]{2,39}$/;                      // letras, números, guion y guion bajo (un "/" rompería la ruta del documento)
+
+  // Mensaje debajo del campo del código (error en rojo, éxito en dorado)
+  const msgCodigoZ = (texto, ok) => { const m = $('zCodeMsg'); m.textContent = texto; m.className = 'mt-2 min-h-[1.25rem] text-xs ' + (ok ? 'font-semibold text-gold' : 'err'); };
+
+  // Tarjeta de una recompensa: foto (o ícono) + costo + barra de progreso + botón Canjear (se habilita si alcanza el saldo)
+  const rewardCard = r => {
+    const ok = puntosZ >= r.cost, pct = Math.min(100, Math.round(puntosZ / r.cost * 100)), armado = canjeArmado === r.name;
+    const visual = r.item && r.item.im ? photo(r.item.im, r.name, '', 'aspect-[4/3]')
+      : `<div class="grid aspect-[4/3] place-items-center bg-hairline/30 text-4xl text-fire"><i class="fa-solid ${r.icon || 'fa-gift'}" aria-hidden="true"></i></div>`;
+    return `
+    <article class="menu-card flex flex-col overflow-hidden rounded-2xl">
+      ${visual}
+      <div class="flex flex-1 flex-col p-3">
+        <h4 class="text-sm font-bold leading-snug text-ink">${r.name}</h4>
+        ${r.item ? `<p class="text-xs text-muted">Valor ${money(r.item.p)}</p>` : ''}
+        <p class="mt-1 font-display text-2xl leading-none text-gold">${r.cost} <span class="text-sm">Pts</span></p>
+        <div class="mt-2 h-2 overflow-hidden rounded-full bg-hairline/40" role="progressbar" aria-label="Progreso para ${r.name}" aria-valuenow="${Math.min(puntosZ, r.cost)}" aria-valuemin="0" aria-valuemax="${r.cost}"><div class="h-full rounded-full bg-gold transition-[width]" style="width:${pct}%"></div></div>
+        <p class="mt-1 text-[11px] font-semibold ${ok ? 'text-gold' : 'text-muted'}">${ok ? '¡Ya podés canjearla!' : `Te faltan ${r.cost - puntosZ} Pts`}</p>
+        <button type="button" data-redeem="${encodeURIComponent(r.name)}" ${ok ? '' : 'disabled aria-disabled="true"'} class="btn-fire mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-xs disabled:cursor-not-allowed disabled:opacity-40">
+          <i class="fa-solid ${armado ? 'fa-circle-check' : 'fa-gift'}" aria-hidden="true"></i> ${armado ? '¿Confirmar?' : 'Canjear'}
+        </button>
+      </div>
+    </article>`;
+  };
+  const renderRecompensas = () => {
+    $('zRewards').innerHTML = RECOMPENSAS_Z.map(rewardCard).join('');
+    if (canjeArmado) { const b = $('zRewards').querySelector(`[data-redeem="${encodeURIComponent(canjeArmado)}"]`); if (b) b.focus({ preventScroll: true }); }
+  };
+
+  // Widget del saldo (con un "pop" cuando sube) + catálogo
+  const paintPuntosZ = animar => {
+    const b = $('zBalance');
+    b.textContent = puntosZ.toLocaleString('es-UY');
+    if (animar) { b.classList.remove('z-pop'); void b.offsetWidth; b.classList.add('z-pop'); }
+    renderRecompensas();
+  };
+
+  // ► Canje de códigos. Cada PASO corresponde a un paso del flujo descripto arriba.
+  async function validarCodigoZ(codigoIngresado) {
+    const btn = $('zCodeBtn');
+    // PASO 0 · Los puntos se guardan en la CUENTA del cliente (no en el celular): hace falta tener la sesión iniciada
+    if (!user || !user.uid) return msgCodigoZ('Volvé a iniciar sesión para canjear tu código.', false);
+
+    // PASO 1 · Sanitización
+    const codigoLimpio = String(codigoIngresado || '').trim().toUpperCase();
+    if (!codigoLimpio) return msgCodigoZ('Ingresá tu código.', false);
+    if (!CODIGO_Z_RE.test(codigoLimpio)) return msgCodigoZ('El código no existe', false);   // con ese formato no puede existir
+
+    const uid = user.uid, nombre = user.name, email = user.email;
+    btn.disabled = true; msgCodigoZ('Verificando tu código…', true);
+    try {
+      const f = await loadOrThrow();
+      // PASO 2 · Consulta a Firestore: el documento del código y el del cliente
+      const refCodigo = f.doc(f.db, 'codigos_puntos', codigoLimpio);
+      const refCliente = f.doc(f.db, 'users', uid);
+
+      // Los pasos 3 a 5 ocurren dentro de UNA transacción: se lee, se valida, se quema el código y se suman los puntos
+      // en la misma operación atómica (así un código no se puede canjear dos veces ni quedar quemado sin dar los puntos).
+      const { puntos, saldo } = await Promise.race([
+        f.runTransaction(f.db, async tx => {
+          const snapshot = await tx.get(refCodigo);
+          // PASO 3 · Validación de existencia
+          if (!snapshot.exists()) throw new ErrorZ('El código no existe');
+          const datos = snapshot.data();
+          // PASO 4 · Validación de uso
+          if (datos.usado !== false) throw new ErrorZ('Este código ya fue utilizado');
+          const puntos = datos.puntos;
+          if (!Number.isInteger(puntos) || puntos <= 0) throw new ErrorZ('Este código no tiene puntos válidos. Escribinos por WhatsApp.');
+          const cliente = await tx.get(refCliente);
+          const actual = cliente.exists() && Number.isInteger(cliente.data().points) ? cliente.data().points : 0;
+          // PASO 5 · Quemado del código + acreditación de los puntos (misma operación). También queda quién lo canjeó y cuándo.
+          tx.update(refCodigo, { usado: true, fecha_canje: new Date().toISOString(), canjeado_por: uid });
+          tx.set(refCliente, { points: actual + puntos, lastCode: codigoLimpio, nombre, email }, { merge: true });
+          return { puntos, saldo: actual + puntos };
+        }),
+        new Promise((_, rej) => setTimeout(() => rej(new ErrorZ('Está tardando más de lo normal. Esperá unos segundos y revisá tu saldo antes de volver a intentar.')), 20000))
+      ]);
+
+      // PASO 6 · Acreditación e interfaz: actualizar el contador, avisar y limpiar el campo
+      puntosZ = saldo; paintPuntosZ(true);
+      $('zCode').value = '';
+      msgCodigoZ(`¡Sumaste ${ptsTxt(puntos)}! Ahora tenés ${ptsTxt(saldo)}.`, true);
+      toast(`⭐ ¡Sumaste ${ptsTxt(puntos)}!`);
+    } catch (e) {
+      if (e instanceof ErrorZ) { msgCodigoZ(e.message, false); if (/tardando/.test(e.message)) setTimeout(loadProfile, 5000); }
+      else {
+        console.error('[Z18] No se pudo canjear el código:', e);
+        msgCodigoZ((e && e.code) === 'unavailable' ? 'No hay conexión. Revisá tu internet e intentá de nuevo.' : 'No pudimos validar tu código ahora. Probá de nuevo en un momento.', false);
+      }
+    } finally { btn.disabled = false; }
+  }
+
+  // ► Canjear una recompensa: resta los puntos (transacción en Firestore) y suma el producto al carrito a $0
+  const canjearRecompensa = async name => {
+    const r = RECOMPENSAS_Z.find(x => x.name === name);
+    if (!r || !user || !user.uid || canjeando) return;
+    canjeando = true;
+    const uid = user.uid;
+    try {
+      const f = await loadOrThrow();
+      const ref = f.doc(f.db, 'users', uid);
+      const saldo = await f.runTransaction(f.db, async tx => {
+        const s = await tx.get(ref);
+        const actual = s.exists() && Number.isInteger(s.data().points) ? s.data().points : 0;
+        if (actual < r.cost) throw new ErrorZ(`Te faltan ${r.cost - actual} Puntos Z para esta recompensa.`);
+        tx.update(ref, { points: actual - r.cost });
+        return actual - r.cost;
+      });
+      puntosZ = saldo;
+      const rn = redeemName(r);
+      cart[rn] = (cart[rn] || 0) + 1; renderCart();
+      toast(`🎁 ¡Canjeaste ${r.name}! Ya está en tu carrito`);
+    } catch (e) {
+      if (e instanceof ErrorZ) { toast(e.message); loadProfile(); }
+      else { console.error('[Z18] No se pudo canjear la recompensa:', e); toast('No se pudo canjear. Probá de nuevo.'); }
+    } finally { canjeando = false; paintPuntosZ(); }
+  };
 
   // Pinta las estrellas del menú, resalta la tarjeta de la favorita y actualiza la tarjeta del perfil
   const paintFavorites = () => {
@@ -1031,11 +1262,11 @@
 
   const setPrefsMsg = (t, ok) => { const m = $('prefsMsg'); m.textContent = t; m.className = ok ? 'mt-2 text-center text-xs font-semibold text-gold' : 'err mt-2 text-center'; };
   const paintProfile = () => {
-    paintFavorites(); renderHistory();
+    paintPuntosZ(); paintFavorites(); renderHistory();
     if (!prefsDirty) { $('payMethod').value = paymentMethod; $('kitchenNotes').value = kitchenNotes; }   // no pisa lo que el cliente está escribiendo
   };
 
-  // Trae de Firestore la favorita, las preferencias y los últimos 10 pedidos del cliente
+  // Trae de Firestore el saldo de Puntos Z, la favorita, las preferencias y los últimos 10 pedidos del cliente
   const loadProfile = async () => {
     if (!user || !user.uid) return;
     const uid = user.uid;
@@ -1049,6 +1280,7 @@
     } catch (e) { console.error('[Z18] No se pudo cargar tu historial:', e); }
     if (!user || user.uid !== uid) return;                                // mientras cargaba cerró sesión o entró otra cuenta
     if (d) {
+      puntosZ = Number.isInteger(d.points) && d.points > 0 ? d.points : 0;
       favoriteBurger = FAV_ITEMS.some(x => x.n === d.favoriteBurger) ? d.favoriteBurger : '';
       paymentMethod = PAY_METHODS.includes(d.paymentMethod) ? d.paymentMethod : '';
       kitchenNotes = typeof d.kitchenNotes === 'string' ? d.kitchenNotes : '';
@@ -1073,15 +1305,16 @@
     }
   };
 
-  // Repetir pedido: vuelve a meter esos mismos productos en el carrito y lo abre
+  // Repetir pedido: vuelve a meter esos mismos productos en el carrito y lo abre (un ítem canjeado se repite al precio normal)
   const repeatOrder = id => {
     const o = userOrders.find(x => x.id === id);
     if (!o) return;
     let n = 0;
     (o.items || []).forEach(it => {
+      const base = String(it.n).replace(REWARD_SUFFIX, '');
       const q = Math.min(Math.floor(it.q) || 0, 99);
-      if (PRICE[it.n] === undefined || q < 1) return;                     // un producto que ya no está en el menú se omite
-      cart[it.n] = (cart[it.n] || 0) + q; n++;
+      if (PRICE[base] === undefined || q < 1) return;                     // un producto que ya no está en el menú se omite
+      cart[base] = (cart[base] || 0) + q; n++;
     });
     if (!n) { toast('Esos productos ya no están en el menú'); return; }
     renderCart(); closeAuth(); setCart(true); toast('Sumamos ese pedido a tu carrito');
@@ -1090,9 +1323,22 @@
   document.addEventListener('click', e => {
     const sb = e.target.closest('[data-fav]');
     if (sb) { vibrate(); toggleFavorite(decodeURIComponent(sb.dataset.fav)); return; }
+    const rb = e.target.closest('[data-redeem]');
+    if (rb) {
+      if (rb.disabled || canjeando) return;
+      vibrate();
+      const name = decodeURIComponent(rb.dataset.redeem);
+      clearTimeout(canjeTimer);
+      if (canjeArmado !== name) {                                         // 1ª pulsación: pide confirmación (se cancela sola a los 4 s)
+        canjeArmado = name; renderRecompensas();
+        canjeTimer = setTimeout(() => { canjeArmado = null; renderRecompensas(); }, 4000);
+      } else { canjeArmado = null; canjearRecompensa(name); }             // 2ª pulsación: canjea
+      return;
+    }
     const hb = e.target.closest('[data-repeat]');
     if (hb) repeatOrder(hb.dataset.repeat);
   });
+  $('zCodeForm').addEventListener('submit', e => { e.preventDefault(); validarCodigoZ($('zCode').value); });
 
   // Guardar Cambios: método de pago preferido + notas habituales de cocina
   ['input', 'change'].forEach(ev => ['payMethod', 'kitchenNotes'].forEach(id => $(id).addEventListener(ev, () => { prefsDirty = true; setPrefsMsg(''); })));
@@ -1113,7 +1359,7 @@
     } finally { btn.disabled = false; }
   };
 
-  if (user && user.uid) loadProfile();                                    // visitante que vuelve con la sesión abierta: pinta su favorita en el menú
+  if (user && user.uid) loadProfile();                                    // visitante que vuelve con la sesión abierta: pinta su saldo y su favorita
 
   const signIn = u => {
     user = { name: String(u.name || u.email || 'Cliente Z18').slice(0, 60), email: u.email || '', phone: u.phone || '', avatar: u.avatar || '', uid: u.uid || '' };
@@ -1128,7 +1374,7 @@
   $('logout').onclick = () => {
     user = null; try { localStorage.removeItem('z18_session'); } catch (e) {}
     loadFirebase().then(f => f.signOut(f.auth)).catch(() => {});   // correo, Google o Facebook: las 3 cierran sesión en Firebase
-    favoriteBurger = paymentMethod = kitchenNotes = ''; userOrders = []; prefsDirty = false; setPrefsMsg('');   // que la próxima cuenta no vea estos datos
+    puntosZ = 0; canjeArmado = null; msgCodigoZ(''); $('zCode').value = ''; favoriteBurger = paymentMethod = kitchenNotes = ''; userOrders = []; prefsDirty = false; setPrefsMsg('');   // que la próxima cuenta no vea estos datos
     paintProfile();
     paintUser(); closeAuth(); toast('Sesión cerrada');
   };
