@@ -529,30 +529,33 @@
                   si no está en IMG usa la foto "fallback"
         · menu  → (opcional) producto del menú al que equivale: es el que "Repetir pedido" vuelve a pedir a precio normal
         · papas → (opcional) cuenta como papas para la oferta del carrito
-     ⚖️ Cómo elegir los puntos para que no queden regalados: cada Punto Z = $50 de compra, así que un canje de N pts equivale a haber
-        comprado $50 × N. Estas recompensas devuelven ~5 % de eso, o sea  pts ≈ valor ÷ 2,6  (ej.: Z18 Original $369 → 140 pts = $7.000 en compras;
-        Combo Z18 Original $445 → 170 pts = $8.500; Coca-Cola 1,5 L $180 → 70 pts = $3.500). */
+     ⚖️ Cómo se eligen los puntos: cada Punto Z = $50 de compra, así que un canje de N pts equivale a haber comprado $50 × N. La tasa de retorno
+        general es 2,5 %: pts ≈ valor ÷ 1,25, redondeado a múltiplos de 5 (ej.: Papas Fritas $180 → 145 pts = $7.250 en compras; Z18 Original $369 → 300 pts = $15.000). */
   const PESOS_POR_PUNTO_Z = 50;
-  const RECOMPENSAS_Z = [
-    { id: 'papas-comunes', name: 'Papas Fritas',          cost: 35,  value: 120, src: 'papas-comunes.png', menu: 'Papas fritas',              papas: true },
-    { id: 'papas-cheddar', name: 'Papas Cheddar & Bacon', cost: 65,  value: 190, src: 'papas-cheddar.png', menu: 'Papas con cheddar y bacon', papas: true },
-    { id: 'pizzeta-muzza', name: 'Pizzeta Muzzarella',    cost: 110, value: 290, src: 'pizzeta-muzza.png' },
-    { id: 'coca-600',      name: 'Coca-Cola 600 ml',      cost: 35,  value: 90,  src: 'coca600.jpg', fallback: 'cola', menu: 'Coca-Cola 600 ml' },
-    { id: 'z18-original',  name: 'Z18 Original',          cost: 140, value: 369, src: 'z18',         menu: 'Z18 Original' },        // hamburguesa: $7.000 en compras (5,3 %)
-    { id: 'combo-z18',     name: 'Combo Z18 Original',    cost: 170, value: 445, src: 'z18',         menu: 'Combo Z18 Original' },  // hamburguesa + papas + bebida: $8.500 en compras (5,2 %)
-    { id: 'coca-15',       name: 'Coca-Cola 1.5 L',       cost: 70,  value: 180, src: 'cola',        menu: 'Coca-Cola 1.5 L' },     // $3.500 en compras (5,1 %)
-    { id: 'smith44',       name: 'Smith44 (473 ml)',      cost: 35,  value: 90,  src: 'beer',        menu: 'Smith44 (473 ml)' }     // $1.750 en compras (5,1 %)
+  const RECOMPENSAS_Z = [   // de menor a mayor costo
+    { id: 'coca-600',      name: 'Coca-Cola 600 ml',      cost: 70,  value: 90,  src: 'coca600.jpg', fallback: 'cola', menu: 'Coca-Cola 600 ml' },
+    { id: 'smith44',       name: 'Smith44 (473 ml)',      cost: 70,  value: 90,  src: 'beer',        menu: 'Smith44 (473 ml)' },
+    { id: 'papas-comunes', name: 'Papas Fritas',          cost: 145, value: 180, src: 'papas-comunes.png', menu: 'Papas fritas',              papas: true },
+    { id: 'coca-15',       name: 'Coca-Cola 1,5 L',       cost: 145, value: 180, src: 'cola',        menu: 'Coca-Cola 1.5 L' },
+    { id: 'papas-cheddar', name: 'Papas Cheddar & Bacon', cost: 185, value: 230, src: 'papas-cheddar.png', menu: 'Papas con cheddar y bacon', papas: true },
+    { id: 'pizzeta-muzza', name: 'Pizzeta Muzzarella',    cost: 215, value: 270, src: 'pizzeta-muzza.png' },
+    { id: 'z18-original',  name: 'Z18 Original',          cost: 300, value: 369, src: 'z18',         menu: 'Z18 Original' },
+    { id: 'combo-z18',     name: 'Combo Z18 Original',    cost: 360, value: 445, src: 'z18',         menu: 'Combo Z18 Original' }
   ];
   const rewardImg = r => { const k = r.src.replace(/\.[a-z0-9]+$/i, ''); return IMG[k] ? k : (r.fallback || k); };   // 'papas-comunes.png' → IMG['papas-comunes']
   const nameHtml = r => r.name.replace(/&/g, '&amp;');                          // el "&" de "Cheddar & Bacon" en HTML
   const REWARD_SUFFIX = / \(canje \d+ Puntos Z\)$/;                           // sufijo de los ítems canjeados dentro del carrito
   const redeemName = r => `${r.name} (canje ${r.cost} Puntos Z)`;
   RECOMPENSAS_Z.forEach(r => { PRICE[redeemName(r)] = 0; });                   // un canje cuesta $0 (también al recargar con el carrito guardado)
-  const REWARD_PAPAS = new Set(RECOMPENSAS_Z.filter(r => r.papas).map(redeemName));   // canjes que ya son papas
+  const REWARD_PAPAS = new Set(RECOMPENSAS_Z.filter(r => r.papas).map(r => r.name));   // nombres de las recompensas que ya son papas
 
-  // Canjes de recompensas que ya NO se ofrecen (se quitaron del catálogo). Si un cliente ya la había canjeado (puntos descontados) y la tiene en su
-  // carrito guardado, se sigue aceptando a $0 para que no pierda lo que pagó con sus puntos. No aparece en el catálogo ni se puede canjear de nuevo.
-  const CANJES_RETIRADOS = ['Pizzeta con Salsa (canje 80 Puntos Z)'];
+  // Canjes que ya NO se ofrecen (se quitaron del catálogo o cambiaron de costo en puntos). Si un cliente ya los había canjeado —puntos descontados— y los
+  // tiene en su carrito guardado, se siguen aceptando a $0 para que no pierda lo que pagó con sus puntos. No aparecen en el catálogo ni se pueden canjear de nuevo.
+  // Si volvés a cambiar un costo, sumá acá el [nombre, costo anterior].
+  const CANJES_RETIRADOS = [
+    ['Pizzeta con Salsa', 80], ['Papas Fritas', 35], ['Papas Cheddar & Bacon', 65], ['Pizzeta Muzzarella', 110], ['Coca-Cola 600 ml', 35],
+    ['Z18 Original', 140], ['Combo Z18 Original', 170], ['Coca-Cola 1.5 L', 70], ['Smith44 (473 ml)', 35]
+  ].map(([name, cost]) => redeemName({ name, cost }));
   CANJES_RETIRADOS.forEach(n => { PRICE[n] = 0; });
 
   /* ================= 5) CARRITO ================= */
@@ -1053,8 +1056,8 @@
 
   // ¿El carrito actual ya trae papas de algún tipo? (Condición A si true, Condición B si false)
   const cartHasPapas = () => Object.keys(cart).some(n => {
-    if (REWARD_PAPAS.has(n)) return true;                             // papas canjeadas con Puntos Z (Papas Fritas / Cheddar & Bacon)
     const base = n.replace(REWARD_SUFFIX, '');                        // un ítem canjeado cuenta como el producto real que es
+    if (REWARD_SUFFIX.test(n) && REWARD_PAPAS.has(base)) return true;   // papas canjeadas con Puntos Z (Papas Fritas / Cheddar & Bacon), con el costo que tuvieran
     const cat = CATEGORY_OF[base];
     if (PAPAS_ALWAYS_CATS.includes(cat)) return true;
     if (cat === 'milas' && /papas/i.test(base)) return true;          // ej: "...+ porción de papas fritas"
@@ -1332,9 +1335,9 @@
     if (!o) return;
     let n = 0, skipped = 0;
     (o.items || []).forEach(it => {
-      const raw = String(it.n), canje = REWARD_SUFFIX.test(raw);
-      const rew = canje ? RECOMPENSAS_Z.find(r => redeemName(r) === raw) : null;
-      const base = rew ? (rew.menu || '') : raw.replace(REWARD_SUFFIX, '');
+      const raw = String(it.n), canje = REWARD_SUFFIX.test(raw), nombre = raw.replace(REWARD_SUFFIX, '');
+      const rew = canje ? RECOMPENSAS_Z.find(r => r.name === nombre) : null;   // por nombre: vale aunque el costo en puntos haya cambiado desde ese pedido
+      const base = rew ? (rew.menu || '') : nombre;
       const q = Math.min(Math.floor(it.q) || 0, 99);
       if (!base || PRICE[base] === undefined || q < 1) { if (canje) skipped++; return; }   // un producto que ya no está en el menú se omite
       cart[base] = (cart[base] || 0) + q; n++;
