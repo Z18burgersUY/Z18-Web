@@ -527,14 +527,17 @@
         · value → el "Valor $X" que se muestra en la tarjeta
         · src   → archivo de la foto: se busca en IMG por su nombre sin extensión; si no está, usa la foto "fallback"
         · menu  → (opcional) producto del menú al que equivale: es el que "Repetir pedido" vuelve a pedir a precio normal
-        · papas → (opcional) cuenta como papas para la oferta del carrito */
+        · papas → (opcional) cuenta como papas para la oferta del carrito
+     ⚖️ Cómo elegir los puntos para que no queden regalados: cada Punto Z = $50 de compra, así que un canje de N pts equivale a haber
+        comprado $50 × N. Estas recompensas devuelven ~5 % de eso, o sea  pts ≈ valor ÷ 2,6  (ej.: Z18 Original $369 → 140 pts = $7.000 en compras). */
   const PESOS_POR_PUNTO_Z = 50;
   const RECOMPENSAS_Z = [
     { id: 'papas-comunes', name: 'Papas Fritas',          cost: 35,  value: 120, src: 'papas-comunes.png', menu: 'Papas fritas',              papas: true },
     { id: 'papas-cheddar', name: 'Papas Cheddar & Bacon', cost: 65,  value: 190, src: 'papas-cheddar.png', menu: 'Papas con cheddar y bacon', papas: true },
     { id: 'pizzeta-salsa', name: 'Pizzeta con Salsa',     cost: 80,  value: 220, src: 'pizzeta-salsa.png' },
     { id: 'pizzeta-muzza', name: 'Pizzeta Muzzarella',    cost: 110, value: 290, src: 'pizzeta-muzza.png' },
-    { id: 'coca-600',      name: 'Coca-Cola 600 ml',      cost: 35,  value: 90,  src: 'coca600.jpg', fallback: 'cola', menu: 'Coca-Cola 600 ml' }
+    { id: 'coca-600',      name: 'Coca-Cola 600 ml',      cost: 35,  value: 90,  src: 'coca600.jpg', fallback: 'cola', menu: 'Coca-Cola 600 ml' },
+    { id: 'z18-original',  name: 'Z18 Original',          cost: 140, value: 369, src: 'z18.png',     menu: 'Z18 Original' }          // hamburguesa: $7.000 en compras (5,3 %)
   ];
   const rewardImg = r => { const k = r.src.replace(/\.[a-z0-9]+$/i, ''); return IMG[k] ? k : (r.fallback || k); };   // 'papas-comunes.png' → IMG['papas-comunes']
   const nameHtml = r => r.name.replace(/&/g, '&amp;');                          // el "&" de "Cheddar & Bacon" en HTML
