@@ -538,7 +538,7 @@
     { id: 'papas-comunes', name: 'Papas Fritas',          cost: 145, value: 180, src: 'papas-comunes.png', menu: 'Papas fritas',              papas: true },
     { id: 'coca-15',       name: 'Coca-Cola 1,5 L',       cost: 145, value: 180, src: 'cola',        menu: 'Coca-Cola 1.5 L' },
     { id: 'papas-cheddar', name: 'Papas Cheddar & Bacon', cost: 185, value: 230, src: 'papas-cheddar.png', menu: 'Papas con cheddar y bacon', papas: true },
-    { id: 'pizzeta-muzza', name: 'Pizzeta Muzzarella',    cost: 215, value: 270, src: 'pizzeta-muzza.png' },
+    { id: 'pizzeta-muzza', name: 'Pizzeta Muzzarella',    cost: 300, value: 370, src: 'pizzeta-muzza.png' },     // $370 = precio de la carta → $15.000 en compras (2,5 %)
     { id: 'z18-original',  name: 'Z18 Original',          cost: 300, value: 369, src: 'z18',         menu: 'Z18 Original' },
     { id: 'combo-z18',     name: 'Combo Z18 Original',    cost: 360, value: 445, src: 'z18',         menu: 'Combo Z18 Original' }
   ];
@@ -553,7 +553,7 @@
   // tiene en su carrito guardado, se siguen aceptando a $0 para que no pierda lo que pagó con sus puntos. No aparecen en el catálogo ni se pueden canjear de nuevo.
   // Si volvés a cambiar un costo, sumá acá el [nombre, costo anterior].
   const CANJES_RETIRADOS = [
-    ['Pizzeta con Salsa', 80], ['Papas Fritas', 35], ['Papas Cheddar & Bacon', 65], ['Pizzeta Muzzarella', 110], ['Coca-Cola 600 ml', 35],
+    ['Pizzeta con Salsa', 80], ['Papas Fritas', 35], ['Papas Cheddar & Bacon', 65], ['Pizzeta Muzzarella', 110], ['Pizzeta Muzzarella', 215], ['Coca-Cola 600 ml', 35],
     ['Z18 Original', 140], ['Combo Z18 Original', 170], ['Coca-Cola 1.5 L', 70], ['Smith44 (473 ml)', 35]
   ].map(([name, cost]) => redeemName({ name, cost }));
   CANJES_RETIRADOS.forEach(n => { PRICE[n] = 0; });
