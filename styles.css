@@ -1,0 +1,169 @@
+:root {
+  --z-bg: #0a0b0d; --z-bg2: #12141a; --z-hero1: #1a1510;
+  --z-card: #161820; --z-input: #0e1014; --z-chip: #1f222e;
+  --z-border: #27272a; --z-hairline: #3f4454;
+  --z-ink: #ffffff; --z-muted: #e2e8f0; --z-muted2: #94a3b8;
+}
+[data-theme="light"] {
+  --z-bg: #f7f4ef; --z-bg2: #ffffff; --z-hero1: #fff1e6;
+  --z-card: #ffffff; --z-input: #f3f1ec; --z-chip: #efe9df;
+  --z-border: #e6e0d4; --z-hairline: #d8d0c0;
+  --z-ink: #18140f; --z-muted: #55503f; --z-muted2: #7a7566;
+}
+/* Fondo carbón con grano sutil (en sintonía con la textura del logo) */
+body {
+  background-color: var(--z-bg); color: var(--z-ink); -webkit-font-smoothing: antialiased;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, var(--z-bg2), var(--z-bg) 60%);
+}
+[data-theme="light"] body { background-image: linear-gradient(180deg, var(--z-bg2), var(--z-bg) 60%); }
+main section { scroll-margin-top: 5rem; }
+a:focus-visible { outline: 2px solid #ffb700; outline-offset: 2px; }
+.no-scrollbar { scrollbar-width: none; } .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Resplandor de fuego alrededor del logo (sigue el contorno circular) */
+.glow-logo { filter: drop-shadow(0 0 25px rgba(255, 85, 0, .35)); }
+.glow-text { text-shadow: 0 0 14px rgba(255, 85, 0, .5); }
+
+/* Tarjetas y paneles */
+.menu-card { background-color: var(--z-card); border: 1px solid var(--z-border); transition: border-color .2s, box-shadow .2s; }
+.menu-card:hover { border-color: #ff5500; box-shadow: 0 10px 25px -8px rgba(255, 85, 0, .4); }
+.panel { background-color: var(--z-card); border: 1px solid var(--z-border); border-radius: 1rem; padding: 1.25rem; }
+.price-tag { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; line-height: 1; color: #ff5500; flex-shrink: 0; }
+.sub { font-family: 'Bebas Neue', sans-serif; font-size: 1.75rem; letter-spacing: .04em; color: #ffb700; }
+.tag { position: absolute; top: .75rem; right: .75rem; z-index: 2; white-space: nowrap; background: #d93800; color: #fff; padding: .1rem .8rem; border-radius: .4rem;
+       font: 1.4rem/1.3 'Bebas Neue', sans-serif; letter-spacing: .06em; box-shadow: 0 4px 14px rgba(0, 0, 0, .55); }
+.chip { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .8rem; border-radius: 9999px; background: var(--z-chip);
+        border: 1px solid var(--z-hairline); color: var(--z-ink); font-size: .8rem; font-weight: 600; }
+
+/* Botones táctiles (mín. 44 px de alto) */
+.btn-fire { background: linear-gradient(135deg, #ff5500, #d93800); color: #fff; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+            box-shadow: 0 4px 18px rgba(255, 85, 0, .4); transition: transform .15s, box-shadow .15s; }
+.btn-fire:hover { box-shadow: 0 6px 22px rgba(255, 85, 0, .65); }
+.btn-fire:active, .btn-wa:active { transform: scale(.96); }
+.btn-wa { background: #25d366; color: #000; transition: transform .15s; }
+
+/* Foto de producto: si la imagen no carga, queda el fondo de brasas con la llama */
+.photo { position: relative; overflow: hidden; background: linear-gradient(135deg, #2a1408, #12141a); }
+.photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.photo::after { content: ''; position: absolute; inset: auto 0 0; height: 40%; background: linear-gradient(to top, var(--z-card), transparent); pointer-events: none; }
+.btn-ghost { border: 1.5px solid #25d366; color: #25d366; background: transparent; font-weight: 700; transition: background .15s, color .15s; }
+.btn-ghost:hover { background: #25d366; color: #000; }
+.qty { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 9999px; border: 1px solid var(--z-hairline); background: var(--z-chip); font-size: 1.25rem; font-weight: 800; }
+@keyframes bump { 50% { transform: scale(1.18); } }
+.bump { animation: bump .3s; }
+
+/* Métodos de pago: en celular una fila por método; desde 640 px, tres columnas centradas */
+.pay { display: flex; align-items: center; gap: .75rem; padding: .8rem 1rem; border: 1px solid var(--z-border); border-radius: .75rem; background: var(--z-input); font-weight: 700; }
+.pay i, .pay svg { flex-shrink: 0; width: 1.5rem; font-size: 1.5rem; color: #ff5500; }
+@media (min-width: 640px) { .pay { flex-direction: column; gap: .5rem; padding: 1rem .5rem; text-align: center; } }
+
+/* Navegación */
+.nl { display: inline-flex; align-items: center; gap: .4rem; min-height: 2.75rem; padding: 0 1rem; white-space: nowrap; border-radius: .75rem;
+      font-size: .78rem; font-weight: 700; background: var(--z-card); color: var(--z-muted); border: 1px solid var(--z-border); transition: border-color .2s, color .2s; }
+.nl:hover, .nl.on { border-color: #ff5500; color: var(--z-ink); }
+.nl.on { box-shadow: inset 0 0 0 1px #ff5500; }
+.nl-hot { background: #ff5500; border-color: #ff5500; color: #fff; }
+
+/* Brasas del header: el único movimiento decorativo */
+.ember { position: absolute; bottom: -10px; width: var(--s); height: var(--s); border-radius: 50%; background: #ff7a2f; opacity: 0; pointer-events: none;
+         box-shadow: 0 0 8px 2px rgba(255, 110, 30, .7); animation: rise var(--d) linear infinite; }
+@keyframes rise { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate(30px, -60vh); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ember { display: none; } html { scroll-behavior: auto; } }
+/* Cuenta: un solo eje izquierdo (título, etiquetas, campos, botón y enlaces alineados) */
+.inp { width: 100%; min-height: 3rem; padding: .7rem 1rem; border: 1px solid var(--z-hairline); border-radius: .75rem; background: var(--z-input); color: var(--z-ink); font-size: 16px; }
+.inp-pw { padding-right: 3rem; }
+.inp::placeholder { color: #94a3b8; }
+.inp:focus { outline: 2px solid #ffb700; outline-offset: 1px; border-color: #ffb700; }
+.inp[aria-invalid="true"] { border-color: #ff8a80; }
+.err { min-height: 1.1rem; margin-top: .35rem; font-size: .8rem; font-weight: 600; color: #ff8a80; }
+.err.ok { color: #4ade80; }
+.ferr { min-height: 0; margin-top: 0; }
+.lnk { color: #ffb700; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.soc { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .25rem; min-height: 3.5rem; border: 1px solid transparent; border-radius: .75rem;
+       font-size: .75rem; font-weight: 700; transition: transform .15s; }
+.soc:active { transform: scale(.96); }
+.soc:disabled { opacity: .55; cursor: progress; transform: none; }
+[data-theme="light"] #auth .lnk { color: #b45309; }
+/* Estrella ⭐ de favoritos en las tarjetas de hamburguesa */
+.menu-card.has-fav { position: relative; }
+.fav-star { position: absolute; top: .75rem; left: .75rem; z-index: 3; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 9999px;
+            background: rgba(0, 0, 0, .55); color: rgba(255, 255, 255, .9); border: 1px solid rgba(255, 255, 255, .18); backdrop-filter: blur(4px);
+            transition: transform .15s, color .15s, background-color .15s; }
+.fav-star:hover { transform: scale(1.1); color: #ffb700; }
+.fav-star:active { transform: scale(.94); }
+.fav-star:focus-visible { outline: 2px solid #ffb700; outline-offset: 2px; }
+.fav-star svg { width: 1.5rem; height: 1.5rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.fav-star.is-fav { color: #ffb700; background: rgba(0, 0, 0, .72); border-color: #ffb700; }
+.fav-star.is-fav svg { fill: currentColor; }
+.menu-card.is-fav-card { border-color: #ffb700 !important; box-shadow: 0 0 0 1px #ffb700, 0 12px 30px -10px rgba(255, 183, 0, .5); }
+@media (prefers-reduced-motion: reduce) { .fav-star { transition: none; } .fav-star:hover, .fav-star:active { transform: none; } }
+/* Contador de Puntos Z: pequeño "pop" cuando suma */
+@keyframes zpop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.z-pop { animation: zpop .6s ease; }
+@media (prefers-reduced-motion: reduce) { .z-pop { animation: none; } }
+.soc-g { background: #fff; color: #1f1f1f; border-color: #dadce0; } .soc-f { background: #1877f2; color: #fff; }
+.fade-in { animation: fadein .2s ease-out; }
+@keyframes fadein { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .fade-in { animation: none; } }
+html { scroll-behavior: smooth; }
+
+/* ═════════════════ Gran Actualización: íconos SVG, zonas seguras, Puntos Z (tope, Leyenda, Misiones) ═════════════════ */
+
+/* Íconos SVG inline (reemplazan a FontAwesome): se dimensionan con font-size, igual que antes */
+.ico { display: inline-block; height: 1em; overflow: visible; vertical-align: -.125em; fill: currentColor; }
+.ico-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+/* Zonas seguras (notch / barra inferior del celular). Antes eran style="" sueltos en el HTML */
+.safe-nav { padding-top: env(safe-area-inset-top); }
+.safe-fab { margin-bottom: env(safe-area-inset-bottom); }
+#cart .safe-cart-top { padding-top: calc(1rem + env(safe-area-inset-top)); }
+#cart .safe-cart-bottom { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+#auth .safe-auth-top { padding-top: calc(.75rem + env(safe-area-inset-top)); }
+#auth .safe-auth-bottom { padding-bottom: calc(2rem + env(safe-area-inset-bottom)); }
+
+/* Barras de progreso: el ancho lo pone app.js desde data-w (el HTML ya no lleva style="") */
+.bar-fill { width: 0; }
+
+/* Barra de Puntos Z (0 → 1000) y estado de MÁXIMO ALCANZADO */
+.z-meter { height: .6rem; max-width: 16rem; margin: .65rem auto 0; overflow: hidden; border-radius: 9999px; background: var(--z-chip); border: 1px solid var(--z-border); }
+.z-meter-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ffb700, #ff7a00); transition: width .5s ease; }
+.z-max-msg { margin-top: .5rem; font-size: .8rem; font-weight: 800; color: #ffb700; }
+#puntosZ.z-max { border-color: #ffb700; background-image: linear-gradient(180deg, rgba(255, 183, 0, .12), transparent 70%); box-shadow: 0 0 0 1px #ffb700, 0 10px 30px -12px rgba(255, 120, 0, .55); }
+#puntosZ.z-max #zLabel { color: #ffb700; font-size: .78rem; font-weight: 800; letter-spacing: .04em; }
+#puntosZ.z-max .z-meter-fill { background: linear-gradient(90deg, #ff5500, #ffb700, #ff5500); background-size: 200% 100%; animation: zshine 2.2s linear infinite; }
+@keyframes zshine { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .z-meter-fill { transition: none; } #puntosZ.z-max .z-meter-fill { animation: none; } }
+
+/* Estatus Leyenda Z18: marco dorado/fuego en el avatar (menú y «Mi cuenta») + insignia */
+.avatar-leyenda { isolation: isolate; }
+.avatar-leyenda::before { content: ''; position: absolute; inset: -6px; z-index: -1; border-radius: 9999px;
+  background: conic-gradient(from 0deg, #ffb700, #ff5500, #ffe08a, #ff5500, #ffb700); filter: drop-shadow(0 0 10px rgba(255, 140, 0, .7)); animation: zspin 6s linear infinite; }
+.avatar-leyenda #avatarView { border-color: #ffb700; box-shadow: 0 0 0 3px var(--z-bg2); }
+@keyframes zspin { to { transform: rotate(360deg); } }
+#accBtn.acc-leyenda { position: relative; border-color: #ffb700 !important; box-shadow: 0 0 0 2px #ffb700, 0 0 14px rgba(255, 120, 0, .75); }
+#accBtn.acc-leyenda::after { content: '👑'; position: absolute; top: -.7rem; right: -.45rem; font-size: .85rem; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .6)); }
+.badge-leyenda { display: flex; width: max-content; align-items: center; gap: .4rem; padding: .3rem .9rem; border-radius: 9999px;
+  font: 400 1.15rem/1.2 'Bebas Neue', sans-serif; letter-spacing: .08em; color: #2a1500; background: linear-gradient(135deg, #ffd24d, #ff9d00 55%, #ff5500); box-shadow: 0 0 14px rgba(255, 150, 0, .55); }
+.badge-leyenda[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .avatar-leyenda::before { animation: none; } }
+
+/* Misiones Z18 */
+.mision { background: var(--z-card); border: 1px solid var(--z-border); border-radius: 1rem; padding: .85rem; transition: border-color .2s, box-shadow .2s; }
+.mision-lista { border-color: #ffb700; box-shadow: 0 0 0 1px rgba(255, 183, 0, .5), 0 8px 22px -12px rgba(255, 150, 0, .55); }
+.mision-pts { flex-shrink: 0; white-space: nowrap; font: 400 1.35rem/1 'Bebas Neue', sans-serif; letter-spacing: .04em; color: #ffb700; }
+.mision-estado { display: inline-flex; align-items: center; gap: .35rem; font-size: .75rem; font-weight: 700; color: var(--z-muted); }
+.mision-lista .mision-estado { color: #ffb700; }
+.mision-hecha .mision-estado { color: #4ade80; }
+.mision-code { padding: .4rem .6rem; border-radius: .5rem; border: 1px dashed #ffb700; background: rgba(255, 183, 0, .08); color: #ffb700;
+  font: 700 .72rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; }
+.mision-red { display: inline-flex; min-height: 2.5rem; align-items: center; gap: .4rem; padding: 0 .9rem; border-radius: .6rem; border: 1px solid var(--z-hairline);
+  font-size: .75rem; font-weight: 700; color: var(--z-ink); transition: border-color .15s, transform .15s; }
+.mision-red:hover { border-color: #ffb700; }
+.mision-red:active { transform: scale(.96); }
+.mision-red.ok { border-color: #4ade80; color: #4ade80; }
+.mision-codigo { margin: .75rem 0; padding: .7rem 1rem; text-align: center; word-break: break-all; user-select: all; border: 2px dashed #ffb700; border-radius: .75rem; background: rgba(255, 183, 0, .1);
+  color: #ffb700; font: 800 1.15rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; }
+[data-theme="light"] .mision-pts, [data-theme="light"] .mision-code, [data-theme="light"] .mision-codigo, [data-theme="light"] .mision-lista .mision-estado { color: #b45309; }
+[data-theme="light"] .mision-hecha .mision-estado, [data-theme="light"] .mision-red.ok { color: #15803d; }
+[data-theme="light"] .z-max-msg, [data-theme="light"] #puntosZ.z-max #zLabel { color: #9a4a06; }
