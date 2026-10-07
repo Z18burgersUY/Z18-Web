@@ -86,8 +86,10 @@
     <!-- El PNG es cuadrado 1:1 (círculo perfecto): object-contain evita cualquier deformación -->
     <div class="relative mb-4">
       <div class="absolute inset-0 rounded-full bg-fire/20 blur-2xl"></div>
+      <!-- Si el logo no está en la carpeta assets (p. ej. el archivo quedó suelto en la raíz del repositorio), se usa «logo.webp» de la raíz -->
       <img id="logo" src="assets/logo.webp" width="160" height="160" fetchpriority="high"
-           alt="Z18 Hamburguesería Logo" class="glow-logo relative mx-auto h-44 w-44 object-contain sm:h-52 sm:w-52">
+           alt="Z18 Hamburguesería Logo" onerror="this.onerror=null;this.src='logo.webp';var f=document.querySelector('link[rel=icon]');if(f)f.href='logo.webp'"
+           class="glow-logo relative mx-auto h-44 w-44 object-contain sm:h-52 sm:w-52">
     </div>
     <h1 class="glow-text font-display text-4xl tracking-wider sm:text-5xl">Z18 Hamburguesería</h1>
     <p class="mt-1 font-brush text-lg text-gold">Donde la ingeniería culinaria se une con el fuego</p>
@@ -196,7 +198,7 @@
 
 <!-- ============ FOOTER ============ -->
 <footer class="mt-16 border-t border-cardborder bg-darkbg px-4 pb-28 pt-10 text-center">
-  <img src="assets/logo.webp" width="80" height="80" alt="Emblema Z18" loading="lazy" decoding="async" class="glow-logo mx-auto h-20 w-20 object-contain">
+  <img src="assets/logo.webp" width="80" height="80" alt="Emblema Z18" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='logo.webp'" class="glow-logo mx-auto h-20 w-20 object-contain">
   <p class="mt-3 font-display text-2xl tracking-widest">Hecha a lo nuestro, simplemente Z18</p>
   <p class="mt-1 text-xs text-muted">Paso de la Arena, Montevideo, Uruguay</p>
   <a href="mailto:z18.burgers.uy@gmail.com" class="mt-2 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-ink underline decoration-fire underline-offset-4"><svg class="ico text-fire" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><use href="#i-envelope"/></svg> z18.burgers.uy@gmail.com</a>
@@ -251,7 +253,7 @@
          class="fade-in fixed inset-0 z-[100] hidden overflow-y-auto bg-[var(--z-bg2)] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:max-h-[92vh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:border sm:border-cardborder sm:shadow-2xl">
   <div class="safe-auth-top sticky top-0 z-10 flex items-center justify-between bg-[var(--z-bg2)] px-5 py-3">
     <button id="authBack" type="button" class="inline-flex min-h-11 items-center gap-2 rounded-full border-2 border-ink px-5 text-sm font-bold text-ink hover:border-fire"><svg class="ico text-xs" viewBox="0 0 448 512" aria-hidden="true" focusable="false"><use href="#i-arrow-left"/></svg> Atrás</button>
-    <img src="assets/logo.webp" width="44" height="44" alt="" class="h-11 w-11 object-contain">
+    <img src="assets/logo.webp" width="44" height="44" alt="" onerror="this.onerror=null;this.src='logo.webp'" class="h-11 w-11 object-contain">
   </div>
   <div class="safe-auth-bottom px-5 pt-4">
     <div id="panes"></div>
