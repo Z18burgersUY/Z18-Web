@@ -157,6 +157,11 @@ html { scroll-behavior: smooth; }
 .mision-hecha .mision-estado { color: #4ade80; }
 .mision-code { padding: .4rem .6rem; border-radius: .5rem; border: 1px dashed #ffb700; background: rgba(255, 183, 0, .08); color: #ffb700;
   font: 700 .72rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; }
+/* Misión MANUAL (Rescate de Martes, Combo Completo): solo información. El aviso va donde estaba el botón, pero no es un botón (sin hover ni foco). */
+.mision-wa { display: flex; align-items: flex-start; gap: .5rem; padding: .55rem .7rem; border-radius: .6rem; background: var(--z-chip);
+  font-size: .75rem; font-weight: 700; line-height: 1.35; color: var(--z-ink); }
+.mision-wa .ico { flex-shrink: 0; margin-top: .05rem; font-size: 1rem; color: #25d366; }
+[data-theme="light"] .mision-wa .ico { color: #15803d; }
 .mision-red { display: inline-flex; min-height: 2.5rem; align-items: center; gap: .4rem; padding: 0 .9rem; border-radius: .6rem; border: 1px solid var(--z-hairline);
   font-size: .75rem; font-weight: 700; color: var(--z-ink); transition: border-color .15s, transform .15s; }
 .mision-red:hover { border-color: #ffb700; }
