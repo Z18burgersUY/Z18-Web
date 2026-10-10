@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Z18 Hamburguesería Artesanal & Grill | Menú Digital · Paso de la Arena, Montevideo</title>
-<meta name="description" content="Menú digital de Z18: hamburguesas artesanales, combos, milanesas al pan y pizzetas. Carne 100% de verdad. Delivery rápido en Paso de la Arena, Montevideo.">
+<meta name="description" content="Menú digital de Z18: hamburguesas artesanales, combos, milanesas al plato y pizzetas. Carne 100% de verdad. Delivery rápido en Paso de la Arena, Montevideo.">
 <meta name="theme-color" content="#0a0b0d">
 <script>try{if(localStorage.getItem('z18_theme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
 <link rel="icon" type="image/webp" href="assets/logo.webp">
@@ -113,8 +113,6 @@
 </nav>
 
 <main class="mx-auto max-w-5xl space-y-14 px-4 pt-8">
-  <section id="destacado"></section>
-
   <section id="burgers" data-t="Hamburguesas" data-s="Todas incluyen papas fritas" data-i="burger">
     <p class="mx-auto mb-4 flex max-w-md items-center justify-center gap-2 rounded-full border border-hairline bg-cardbg/60 px-4 py-2 text-center text-xs text-muted">💡 Recuerda que puedes agregar extras a tus hamburguesas</p>
     <div id="burgersGrid" class="grid gap-5 sm:grid-cols-2"></div>
@@ -125,13 +123,8 @@
     <div id="combosGrid" class="grid gap-5 sm:grid-cols-2"></div>
   </section>
 
-  <section id="milanesas" data-t="Milanesas al pan" data-s="Hecha a lo nuestro, simplemente Z18" data-i="drumstick-bite">
-    <div class="menu-card overflow-hidden rounded-2xl">
-      <div id="milasPhoto"></div>
-      <ul id="milasList" class="px-4 pb-2"></ul>
-    </div>
-    <h3 class="sub mb-4 mt-10 text-center">Napolitana al plato con papas fritas</h3>
-    <div id="napoGrid" class="mx-auto grid max-w-3xl gap-5 sm:grid-cols-2"></div>
+  <section id="milanesas" data-t="Milanesas al plato" data-s="Todas XL" data-i="drumstick-bite">
+    <div id="milasGrid" class="mx-auto grid max-w-3xl gap-5 sm:grid-cols-2"></div>
   </section>
 
   <section id="pizzetas" data-t="Pizzetas artesanales" data-s="Media masa · salsa estilo casera · horneada casera" data-i="pizza-slice">
