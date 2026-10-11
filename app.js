@@ -91,7 +91,7 @@ const PRICE = {};                                                               
 let favoriteBurger = '', paymentMethod = '', kitchenNotes = '', userOrders = [], prefsDirty = false, puntosZ = 0;   // perfil del cliente (se carga de Firestore al iniciar sesión)
 let lifetimeZ = 0, bono500Z = false, misionesZ = {};                                           // Puntos Z acumulados de toda la vida (no bajan al canjear), si ya cobró el bono de los 500 y el estado de sus misiones
 let user = null;   // sesión: { name, email, phone, avatar, uid, esLeyenda } se guarda en este dispositivo (nunca la contraseña); { misiones, historial } viven solo en memoria (ver «PUNTOS Z»)
-const PANELS = ['cart', 'overlay', 'auth', 'authOverlay', 'upsell', 'upsellOverlay', 'misionModal', 'misionOverlay'];
+const PANELS = ['cart', 'overlay', 'auth', 'authOverlay', 'upsell', 'upsellOverlay', 'misionModal', 'misionOverlay', 'clearModal', 'clearOverlay'];
 // Deja inerte (sin foco ni clics) el resto de la página mientras hay un panel abierto
 const lock = open => [...document.body.children].forEach(el => { if (!PANELS.includes(el.id) && el.tagName !== 'SCRIPT') el.inert = open; });
 const key = (n, p) => (PRICE[n] = p, encodeURIComponent(n));
@@ -306,13 +306,36 @@ const setCart = open => {
 };
 $('cartBtn').onclick = () => setCart(true);
 $('cartClose').onclick = $('overlay').onclick = () => setCart(false);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('cart').inert) setCart(false); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('cart').inert && $('clearModal').classList.contains('hidden')) setCart(false); });
 $('note').addEventListener('input', updateSend);
-$('clear').onclick = () => {
+
+// ── «Vaciar carrito»: la lógica de siempre (los canjes de Puntos Z se mantienen), pero ahora pide confirmación ──
+const vaciarCarrito = () => {
   const keep = {}; Object.keys(cart).forEach(n => { if (REWARD_SUFFIX.test(n)) keep[n] = cart[n]; });   // los canjes ya se pagaron con puntos: no se borran solos
   cart = keep; renderCart();
   if (Object.keys(keep).length) toast('Vaciamos tu carrito. Tus canjes de Puntos Z se mantienen.');
 };
+// Cartel de confirmación (evita que un toque sin querer, sobre todo en el celular, tire todo el pedido). Como los canjes no se borran,
+// si el carrito solo tiene canjes no hay nada en riesgo y no se pregunta.
+let vaciarFoco = null;
+const abrirVaciar = () => {
+  vaciarFoco = document.activeElement;
+  $('clearNote').hidden = !Object.keys(cart).some(n => REWARD_SUFFIX.test(n));
+  clearTimeout(toast.id); $('toast').classList.add('opacity-0', 'translate-y-4');    // un aviso viejo («Agregado: …») no tapa los botones del cartel
+  $('clearModal').classList.remove('hidden'); $('clearOverlay').classList.remove('hidden'); $('clearModal').inert = false;
+  $('cart').inert = true;                                                             // mientras el cartel está abierto, el carrito queda quieto detrás
+  $('clearNo').focus();                                                               // el foco arranca en la opción segura: Cancelar
+};
+const cerrarVaciar = () => {
+  $('clearModal').classList.add('hidden'); $('clearOverlay').classList.add('hidden'); $('clearModal').inert = true;
+  $('cart').inert = $('cart').classList.contains('translate-x-full');                  // el carrito vuelve a estar activo (sigue abierto detrás)
+  const f = vaciarFoco && document.contains(vaciarFoco) && !vaciarFoco.hidden ? vaciarFoco : $('cartClose');   // si «Vaciar carrito» ya no se ve, el foco va a la X
+  vaciarFoco = null; f.focus({ preventScroll: true });
+};
+$('clear').onclick = () => { if (Object.keys(cart).some(n => !REWARD_SUFFIX.test(n))) abrirVaciar(); else vaciarCarrito(); };
+$('clearNo').onclick = $('clearOverlay').onclick = () => { vibrate(); cerrarVaciar(); };
+$('clearYes').onclick = () => { vibrate(); vaciarCarrito(); cerrarVaciar(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('clearModal').classList.contains('hidden')) cerrarVaciar(); });
 renderCart();
 
 /* ================= 5b) CUENTA: iniciar sesión, registro y perfil ================= */
