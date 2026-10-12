@@ -172,3 +172,6 @@ html { scroll-behavior: smooth; }
 [data-theme="light"] .mision-pts, [data-theme="light"] .mision-code, [data-theme="light"] .mision-codigo, [data-theme="light"] .mision-lista .mision-estado { color: #b45309; }
 [data-theme="light"] .mision-hecha .mision-estado, [data-theme="light"] .mision-red.ok { color: #15803d; }
 [data-theme="light"] .z-max-msg, [data-theme="light"] #puntosZ.z-max #zLabel { color: #9a4a06; }
+/* Mensajes de canje (misiones semanales y cuadro «¿Tenés un código de tu pedido?»): en modo claro, rojo y dorado más oscuros para que se lean sobre blanco */
+[data-theme="light"] [data-sem-msg].err, [data-theme="light"] #zCodeMsg.err { color: #b91c1c; }
+[data-theme="light"] [data-sem-msg].text-gold, [data-theme="light"] #zCodeMsg.text-gold { color: #b45309; }

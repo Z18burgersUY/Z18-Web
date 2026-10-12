@@ -357,6 +357,12 @@ const saveUsers = arr => { try { localStorage.setItem('z18_users', JSON.stringif
 //   6) Puntos Z: en Firestore creá la colección «codigos_puntos». Cada código es un documento cuyo ID es el código en MAYÚSCULAS
 //      (ej. Z18-8F3K9Q) con dos campos: puntos (number, ej. 15) y usado (boolean, false). Usá códigos largos y al azar
 //      (no Z18-0001, Z18-0002...) para que nadie pueda adivinarlos. Los códigos los crea Z18 a mano: la web no puede crearlos.
+//   7) Misiones SEMANALES (Rescate de Martes y Combo Completo): cuando un cliente te escribe por WhatsApp para reclamarla, creás en la MISMA colección
+//      «codigos_puntos» un código único y al azar que EMPIECE con el prefijo de la misión, con sus campos puntos (number) y usado (false):
+//         Z18-M…  (ej. Z18-M84K)  → Rescate de Martes          ·          Z18-X…  (ej. Z18-X91W)  → Combo Completo
+//      El cliente lo escribe en esa misión (Mi cuenta → Misiones Z18); la web valida el prefijo, suma los puntos y la deja «Completada esta semana».
+//      Se renueva sola cada lunes 00:00 (hora de Montevideo). ⚠️ Los códigos comunes (paso 6) NO pueden empezar con Z18-M ni con Z18-X.
+//      Podés subir la web y pegar las reglas (paso 5) en cualquier orden; lo ideal es pegar primero las reglas.
 const FIREBASE_VERSION = '12.19.0';                  // firebase-app y firebase-auth SIEMPRE con la misma versión
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyADbG0ywKt-RAsaExZsGJ6dVXdI5iMsTkE",
@@ -579,7 +585,7 @@ $('panes').innerHTML = `
 
     <div id="misionesZ">
       <h3 class="mb-1 font-display text-2xl tracking-wide">Misiones Z18</h3>
-      <p class="mb-3 text-xs text-muted">Completá misiones y ganá Puntos Z extra. Se validan con tu historial de pedidos.</p>
+      <p class="mb-3 text-xs text-muted">Completá misiones y ganá Puntos Z extra. Las semanales se canjean con un código que te entrega Z18 y se renuevan cada lunes.</p>
       <ul id="misionesList" class="space-y-3"></ul>
     </div>
 
@@ -787,12 +793,15 @@ const msgCodigoZ = (texto, ok) => { const m = $('zCodeMsg'); m.textContent = tex
      esLeyenda       true al llegar a 1000 PTS por primera vez. NUNCA se apaga: si después canjea y baja de 1000, el estatus se queda.
      lastCode        último código canjeado (las reglas de Firestore lo usan para validar el aumento de puntos).
      mis_primerImpacto · mis_embajador   true = misión de «1 vez por cuenta» ya reclamada.
-     (Rescate de Martes y Combo Completo son MANUALES: no leen ni dejan ningún campo en la cuenta. Si una cuenta vieja trae marcas de
-      misiones de la versión anterior, la web las ignora.)
+     semMartes · semCombo   NÚMERO DE SEMANA (ver semanaDe) en que se canjeó el código de Rescate de Martes / de Combo Completo (0 = nunca).
+                            La misión está «Completada» mientras ese número sea el de la semana en curso; cada lunes 00:00 (hora de Montevideo)
+                            la semana cambia y la misión vuelve a estar disponible, sin escribir nada. Solo pueden subir (lo exigen las reglas).
+     (Si una cuenta vieja trae marcas de misiones de versiones anteriores, la web las ignora.)
    OBJETO DE SESIÓN · variable global `user`
      { name, email, phone, avatar, uid,
        esLeyenda: false,                       ← Estatus VIP permanente (se guarda en este dispositivo y en Firestore)
-       misiones:  { primerImpacto: { completada: false }, embajador: { completada: false } },                        ← solo en memoria
+       misiones:  { primerImpacto: { completada: false }, embajador: { completada: false },
+                    rescateMartes: { semana: 0 }, comboCompleto: { semana: 0 } },                                    ← solo en memoria
        historial: [ { id, fecha, total, items: [{ n, q }] } ] }                                                      ← solo en memoria */
 const MSG_TOPE = `⚠️ Puntos no canjeados. Puntos máximos registrados. Inténtalo de nuevo cuando tengas menos de ${TOPE_Z} pts.`;
 
@@ -849,27 +858,49 @@ const marcarLeyenda = () => {
    · AUTOMÁTICAS (1 vez por cuenta): «Primer Impacto» y «Embajador Z18». Se validan con el historial de pedidos de la cuenta (obtenerHistorial) o
      con la validación de redes. Cuando se cumplen aparece «Completada»; el cliente toca CANJEAR → modal de confirmación → CONFIRMAR: se aplica el
      código de la misión, se suman los puntos (UNA transacción de Firestore), se muestra el código y la misión queda bloqueada para siempre.
-   · MANUALES: «Rescate de Martes» y «Combo Completo». Son solo INFORMATIVAS: no tienen botón y NO leen ni escriben nada en Firebase. Los puntos
-     los entrega Z18 a mano desde el local con un código de Puntos Z único (se canjea en «¿Tenés un código de tu pedido?»); el cliente los
-     solicita por WhatsApp al enviar su pedido. (Antes se reclamaban desde la web con el historial; se sacó porque ese historial son los pedidos que la
-     propia web registra al tocar «Enviar pedido por WhatsApp», sin que Z18 los confirme: se podía armar un carrito caro y reclamar sin comprar.)
+   · SEMANALES: «Rescate de Martes» y «Combo Completo». Las controla Z18 (la web no puede saber si hubo una compra de verdad), así que funcionan con un
+     CÓDIGO que entrega Z18, con el mismo circuito de Puntos Z:
+       1. El cliente hace su pedido (Rescate de Martes: un martes o miércoles · Combo Completo: un pedido con un extra) y escribe por WhatsApp para reclamar.
+       2. Z18 crea en Firestore (colección «codigos_puntos») un código único y al azar con el PREFIJO de la misión:
+            Z18-M…  (ej. Z18-M84K)  → Rescate de Martes          ·          Z18-X…  (ej. Z18-X91W)  → Combo Completo
+          con sus campos puntos (los que corresponden a esa compra) y usado: false, y se lo pasa al cliente.
+       3. El cliente lo escribe en la misión que corresponde («Mi cuenta» → Misiones Z18). La web valida el PREFIJO (un Z18-X… no sirve en el Martes,
+          ni al revés, ni un código común), quema el código y suma los puntos en UNA transacción (validarCodigoZ con `mision`), y deja la misión
+          «Completada esta semana» (campo semMartes / semCombo = número de la semana en curso).
+       4. RESETEO SEMANAL: la semana va de lunes 00:00 a domingo 24:00 (hora de Montevideo). Cada lunes el número de semana cambia solo y las dos
+          misiones vuelven a estar disponibles (no hay nada que borrar ni ningún proceso programado). El cliente repite el proceso la semana siguiente.
+     Las reglas de Firestore (firestore.rules) hacen cumplir lo mismo en el servidor: un código con prefijo solo suma si, en la misma operación, queda
+     marcada la semana en curso de SU misión (y antes no lo estaba): una vez por semana por misión, aunque alguien salte esta pantalla.
+     ⚠️ Los códigos comunes de Puntos Z NO pueden empezar con Z18-M ni Z18-X (esos prefijos son de las misiones semanales).
    ⚠️ Las dos automáticas siguen apoyándose en datos que la web misma registra, por eso valen poco (+20 y +15), se cobran una sola vez por cuenta
       y las reglas de Firestore (firestore.rules) ponen ese tope. Los pedidos de solo canjes ($0) no cuentan como compra. */
 const MISION_PREGUNTA = '¿Querés reclamar la recompensa de esta misión? Solo se puede realizar 1 vez por cuenta.';
-const MISION_MANUAL_TXT = 'Solicitá esta recompensa por WhatsApp al enviar tu pedido';
+const MISION_SEMANAL_TXT = 'Solicitá esta recompensa por WhatsApp al enviar tu pedido';
+
+/* Semanas de Z18: de lunes 00:00 a domingo 24:00, hora de Montevideo (UTC-3 todo el año: Uruguay no tiene horario de verano). La semana 0 empieza el
+   lunes 1/1/2024 y cada una dura 7 días. Las reglas de Firestore (semanaVigente en firestore.rules) hacen LA MISMA cuenta con el reloj del servidor:
+   si cambiás estas constantes, cambialas también ahí. */
+const SEMANA_0_MS = 1704078000000, SEMANA_MS = 604800000;              // lunes 1/1/2024 00:00 (Montevideo) y 7 días, en milisegundos
+const semanaDe = ms => Math.floor((ms - SEMANA_0_MS) / SEMANA_MS);     // número de la semana en que cae el instante `ms`
+const lunesDe = sem => SEMANA_0_MS + sem * SEMANA_MS;                  // instante del lunes 00:00 en que EMPIEZA la semana `sem`
+const fechaCorta = ms => { const d = new Date(ms - 3 * 3600000); return `${d.getUTCDate()}/${d.getUTCMonth() + 1}`; };   // día/mes en hora de Montevideo (no depende de la zona del celular)
 
 const MISIONES = [
   { id: 'primerImpacto', nombre: 'Primer Impacto',    icono: 'bolt',         codigo: 'Z18-PRIMERIMPACTO', puntos: 20, campo: 'mis_primerImpacto',
     req: 'Hacé tu 1.er pedido registrado.' },
-  // Manuales (informativas): sin código, sin campo en Firestore y sin botón. `etiqueta` = la recompensa que se muestra a la derecha.
-  { id: 'rescateMartes', nombre: 'Rescate de Martes', icono: 'calendar-day', manual: true, etiqueta: 'PUNTOS DOBLES',
+  // Semanales: se canjean con un código de Z18 que empieza con `prefijo`; `campo` guarda el número de semana del último canje.
+  // `etiqueta` = la recompensa que se muestra a la derecha (los puntos reales son los del código que entrega Z18).
+  { id: 'rescateMartes', nombre: 'Rescate de Martes', icono: 'calendar-day', semanal: true, prefijo: 'Z18-M', campo: 'semMartes', etiqueta: 'PUNTOS DOBLES',
     req: 'Hacé un pedido un martes o miércoles y te duplicamos los puntos de esa compra.' },
-  { id: 'comboCompleto', nombre: 'Combo Completo',    icono: 'utensils',     manual: true, etiqueta: '+10 PTS',
+  { id: 'comboCompleto', nombre: 'Combo Completo',    icono: 'utensils',     semanal: true, prefijo: 'Z18-X', campo: 'semCombo',  etiqueta: '+10 PTS',
     req: 'Pedí con un extra: aderezo, postre o adicional (huevo, bacon, cheddar, medallón).' },
   { id: 'embajador',     nombre: 'Embajador Z18',     icono: 'share-nodes',  codigo: 'Z18-EMBAJADOR',     puntos: 15, campo: 'mis_embajador',
     req: 'Seguinos en TikTok e Instagram y validá tus redes.' }
 ];
-const MISIONES_AUTO = MISIONES.filter(m => !m.manual);                                   // las únicas que se pueden reclamar (y las únicas que tocan Firebase)
+const MISIONES_AUTO = MISIONES.filter(m => !m.semanal);                                  // las que se reclaman con el botón CANJEAR y el modal de confirmación
+const MISIONES_SEM = MISIONES.filter(m => m.semanal);                                    // las que se canjean con el código de Z18 (prefijo Z18-M… / Z18-X…)
+// Estado de las semanales en pantalla (solo en memoria): lo que el cliente escribió, el último mensaje, si se está verificando un código, y la semana que se dibujó
+let semBorrador = {}, semMsg = {}, semEnCurso = {}, semVista = null, lunesTimer = null;
 const REDES = [['tiktok', 'TikTok', 'https://www.tiktok.com/@z18oficial'], ['instagram', 'Instagram', 'https://www.instagram.com/z18_oficial']];
 
 // ── Historial de compras ──
@@ -892,34 +923,67 @@ const evaluarMision = (m, historial) => {
       return { cumple: compras >= 1, progreso: Math.min(compras, 1), meta: 1, puntos: m.puntos }; }
     case 'embajador': { const r = leerRedes(), n = REDES.filter(([k]) => r[k]).length; return { cumple: n >= REDES.length, progreso: n, meta: REDES.length, puntos: m.puntos }; }
   }
-  throw new Error('Misión sin validación automática: ' + (m && m.id));                  // las manuales nunca llegan acá
+  throw new Error('Misión sin validación automática: ' + (m && m.id));                  // las semanales nunca llegan acá (se canjean con un código)
 };
 
-// ¿Ya la reclamó? (el campo de la cuenta es true) · Solo mira las automáticas: las manuales no tienen campo y no se leen de Firebase.
-const misionReclamada = (m, d) => !!m.campo && d[m.campo] === true;
-const leerMisiones = (d = {}) => Object.fromEntries(MISIONES_AUTO.map(m => [m.id, { completada: misionReclamada(m, d) }]));
+// ¿Ya la reclamó? (el campo de la cuenta es true) · Solo mira las automáticas: las semanales guardan un número de semana, no un true.
+const misionReclamada = (m, d) => !!m.campo && !m.semanal && d[m.campo] === true;
+const semanaGuardada = v => (Number.isInteger(v) && v > 0 ? v : 0);                    // número de semana del último canje (0 = nunca; un valor raro cuenta como 0)
+// Estado de las misiones que trae la cuenta: las automáticas { completada } y las semanales { semana }
+const leerMisiones = (d = {}) => Object.fromEntries(MISIONES.map(m => [m.id, m.semanal ? { semana: semanaGuardada(d[m.campo]) } : { completada: misionReclamada(m, d) }]));
 const estadoMision = m => {
   const ev = evaluarMision(m, obtenerHistorial()), hecha = !!(misionesZ[m.id] && misionesZ[m.id].completada);
   return { ...ev, estado: hecha ? 'hecha' : ev.cumple ? 'lista' : 'pend' };
 };
+// Semanales: ¿ya la canjeó en la semana en curso? (el lunes 00:00 la semana cambia y vuelve a estar disponible)
+const semanalHecha = m => semanaGuardada(misionesZ[m.id] && misionesZ[m.id].semana) >= semanaDe(Date.now());
 
-// Tarjeta de una misión MANUAL (Rescate de Martes, Combo Completo): solo información. Sin botón, sin estado y sin Firebase:
-// en el lugar del botón va el aviso de que se pide por WhatsApp (los puntos los entrega Z18 con un código de Puntos Z único).
-const misionInfoCard = m => `
-  <li class="mision mision-manual" data-mision-id="${m.id}">
+// Tarjeta de una misión SEMANAL (Rescate de Martes, Combo Completo): se pide por WhatsApp, Z18 entrega un código con prefijo (Z18-M… / Z18-X…)
+// y se canjea acá, en SU misión. Queda «Completada esta semana» hasta el lunes. El texto escrito y los mensajes se pintan aparte (pintarSemanales),
+// por DOM: nada de lo que escribe el cliente se mete en el HTML.
+const CLS_SEM_MSG = 'mt-2 min-h-[1.25rem] text-xs';
+const misionSemanalCard = m => {
+  const hecha = semanalHecha(m), enCurso = !!semEnCurso[m.id];
+  const cabecera = `
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
         <p class="flex items-center gap-2 text-sm font-bold text-ink">${ico(m.icono, 'text-gold')} ${m.nombre}</p>
         <p class="mt-0.5 text-xs leading-snug text-muted">${m.req}</p>
       </div>
       <span class="mision-pts">${m.etiqueta}</span>
-    </div>
-    <p class="mision-wa mt-2">${ico('whatsapp')}<span>${MISION_MANUAL_TXT}</span></p>
+    </div>`;
+  if (hecha) return `
+  <li class="mision mision-hecha mision-semanal" data-mision-id="${m.id}">${cabecera}
+    <div class="mt-2 flex items-center justify-between gap-2"><span class="mision-estado">${ico('lock')} Completada esta semana</span></div>
+    <p data-sem-msg="${m.id}" role="status" aria-live="polite" class="${CLS_SEM_MSG}"></p>
+    <p class="mt-1 text-[11px] text-muted2">Se renueva el lunes ${fechaCorta(lunesDe(semanaDe(Date.now()) + 1))}</p>
   </li>`;
+  return `
+  <li class="mision mision-semanal" data-mision-id="${m.id}">${cabecera}
+    <p class="mision-wa mt-2">${ico('whatsapp')}<span>${MISION_SEMANAL_TXT}</span></p>
+    <form data-sem-form="${m.id}" class="mt-2" autocomplete="off" novalidate>
+      <label for="semCode-${m.id}" class="mb-1 block text-xs font-semibold text-muted">Tu código (empieza con ${m.prefijo})</label>
+      <div class="flex gap-2">
+        <input id="semCode-${m.id}" data-sem-input="${m.id}" type="text" maxlength="40" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="${m.prefijo}…" class="inp min-w-0 flex-1 uppercase tracking-wider"${enCurso ? ' readonly' : ''}>
+        <button type="submit" data-sem-btn="${m.id}" class="btn-fire min-h-12 shrink-0 rounded-xl px-4 text-xs"${enCurso ? ' disabled' : ''}>Canjear</button>
+      </div>
+      <p data-sem-msg="${m.id}" role="status" aria-live="polite" class="${CLS_SEM_MSG}"></p>
+    </form>
+    <p class="mt-1 text-[11px] text-muted2">1 vez por semana · se renueva cada lunes</p>
+  </li>`;
+};
+// Mensaje debajo del campo de una misión semanal (error en rojo, éxito en dorado). Queda guardado en semMsg para sobrevivir a un repintado.
+const pintarMsgSem = m => {
+  const el = document.querySelector(`[data-sem-msg="${m.id}"]`), s = semMsg[m.id];
+  if (!el) return;
+  el.textContent = s ? s.t : '';
+  el.className = CLS_SEM_MSG + (s ? (s.ok ? ' font-semibold text-gold' : ' err') : '');
+};
+const msgSemanal = (m, texto, ok) => { if (texto) semMsg[m.id] = { t: texto, ok: !!ok }; else delete semMsg[m.id]; pintarMsgSem(m); };
 
 // Tarjeta de una misión automática: estado (En progreso / Completada / Reclamada), recompensa y botón CANJEAR
 const misionCard = m => {
-  if (m.manual) return misionInfoCard(m);
+  if (m.semanal) return misionSemanalCard(m);
   const e = estadoMision(m), pts = `+${m.puntos} PTS`;
   const estado = e.estado === 'hecha' ? `${ico('lock')} Reclamada`
     : e.estado === 'lista' ? `${ico('check')} Completada` : `En progreso · ${e.progreso}/${e.meta}`;
@@ -944,15 +1008,29 @@ const misionCard = m => {
     <p class="mt-1 text-[11px] text-muted2">1 vez por cuenta</p>
   </li>`;
 };
+// Reseteo semanal: se repinta solo el lunes 00:00:01 (hora de Montevideo) por si la pantalla quedó abierta de un domingo a un lunes
+const programarLunes = () => {
+  clearTimeout(lunesTimer);
+  const falta = lunesDe(semanaDe(Date.now()) + 1) - Date.now();
+  lunesTimer = setTimeout(() => paintMisiones(), Math.min(Math.max(falta, 0) + 1000, 2147483647));
+};
 const paintMisiones = () => {
   if (!user) return;
   user.misiones = misionesZ; user.historial = obtenerHistorial();                     // estructura del objeto de usuario (ver arriba)
+  const sem = semanaDe(Date.now());
+  if (semVista !== null && semVista !== sem) semMsg = {};                             // empezó otra semana: los mensajes de la anterior ya no valen
+  semVista = sem;
+  const act = document.activeElement;                                                 // un repintado no le borra al cliente lo que está escribiendo ni le saca el foco
+  const foco = act && act.dataset && act.dataset.semInput ? { id: act.dataset.semInput, a: act.selectionStart, b: act.selectionEnd } : null;
   $('misionesList').innerHTML = MISIONES.map(misionCard).join('');
+  MISIONES_SEM.forEach(m => { const i = document.querySelector(`[data-sem-input="${m.id}"]`); if (i) i.value = semBorrador[m.id] || ''; pintarMsgSem(m); });
+  if (foco) { const i = document.querySelector(`[data-sem-input="${foco.id}"]`); if (i && !i.readOnly) { i.focus({ preventScroll: true }); try { i.setSelectionRange(foco.a, foco.b); } catch (e) {} } }
+  programarLunes();
 };
 
 // ── Reclamar (solo misiones automáticas): UNA transacción — revisa que no esté reclamada, aplica el tope/bono, suma los puntos y marca la misión ──
 const reclamarMision = async m => {
-  if (!m || m.manual || !m.campo) throw new ErrorZ(MISION_MANUAL_TXT + '.');          // las manuales no se reclaman ni tocan Firebase
+  if (!m || m.semanal || !m.campo) throw new ErrorZ(MISION_SEMANAL_TXT + '.');         // las semanales no se reclaman con este botón: se canjean con un código
   const e = estadoMision(m);
   if (e.estado === 'hecha') throw new ErrorZ('Esta misión ya fue reclamada.');
   if (e.estado !== 'lista') throw new ErrorZ('Todavía no cumplís los requisitos de esta misión.');
@@ -985,7 +1063,7 @@ const cerrarMision = () => {
   misionFoco = null; if (f && f.focus) f.focus({ preventScroll: true });
 };
 const abrirMision = id => {
-  const m = MISIONES_AUTO.find(x => x.id === id);                                     // las manuales no tienen botón ni modal
+  const m = MISIONES_AUTO.find(x => x.id === id);                                     // las semanales no tienen botón CANJEAR ni modal: llevan su propio campo de código
   if (!m || reclamando) return;
   const e = estadoMision(m);
   if (e.estado !== 'lista') return;
@@ -1073,21 +1151,34 @@ const paintPuntosZ = animar => {
 };
 
 // ► Canje de códigos. Cada PASO corresponde a un paso del flujo descripto arriba.
-async function validarCodigoZ(codigoIngresado) {
-  const btn = $('zCodeBtn');
+async function validarCodigoZ(codigoIngresado, mision = null) {
+  // `mision` = una misión SEMANAL (Rescate de Martes / Combo Completo) cuando el código se escribió en SU tarjeta; sin `mision` es el cuadro general
+  // «¿Tenés un código de tu pedido?». Es el mismo circuito (una transacción que quema el código y suma los puntos); la misión semanal además
+  // exige el prefijo correcto (Z18-M… / Z18-X…), deja marcada la semana en curso y no se puede repetir hasta el lunes.
+  const say = mision ? (t, ok) => msgSemanal(mision, t, ok) : msgCodigoZ;           // dónde se muestran los mensajes
+  const btn = mision ? null : $('zCodeBtn');
   // PASO 0 · Los puntos se guardan en la CUENTA del cliente (no en el celular): hace falta tener la sesión iniciada
-  if (!user || !user.uid) return msgCodigoZ('Volvé a iniciar sesión para canjear tu código.', false);
+  if (!user || !user.uid) return say('Volvé a iniciar sesión para canjear tu código.', false);
+  if (mision && semEnCurso[mision.id]) return;                                          // ya se está verificando un código en esta misión
 
   // PASO 1 · Sanitización
   const codigoLimpio = String(codigoIngresado || '').trim().toUpperCase();
-  if (!codigoLimpio) return msgCodigoZ('Ingresá tu código.', false);
+  if (!codigoLimpio) return say('Ingresá tu código.', false);
   // PASO 1b · Billetera llena: con 1000 Puntos Z no se canjea nada (el código queda sin usar para cuando haya lugar)
-  if (puntosZ >= TOPE_Z) { msgCodigoZ(MSG_TOPE, false); toast(MSG_TOPE, 6000); return; }
-  if (MISIONES.some(m => m.codigo === codigoLimpio)) return msgCodigoZ('Ese código se aplica solo, desde «Misiones Z18», cuando completás la misión.', false);
-  if (!CODIGO_Z_RE.test(codigoLimpio)) return msgCodigoZ('El código no existe', false);   // con ese formato no puede existir
+  if (puntosZ >= TOPE_Z) { say(MSG_TOPE, false); toast(MSG_TOPE, 6000); return; }
+  if (MISIONES.some(m => m.codigo === codigoLimpio)) return say('Ese código se aplica solo, desde «Misiones Z18», cuando completás la misión.', false);
+  // PASO 1c · Misiones SEMANALES: el PREFIJO del código dice a qué misión pertenece (Z18-M… = Rescate de Martes · Z18-X… = Combo Completo).
+  //           Cada código solo se canjea en SU misión; el cuadro general no canjea códigos de misión. (Todo esto es local: no toca Firebase.)
+  const duena = MISIONES_SEM.find(m => codigoLimpio.startsWith(m.prefijo));
+  if (!mision && duena) return say(`Ese código es de «${duena.nombre}». Ingresalo en esa misión, en «Misiones Z18».`, false);
+  if (mision && duena !== mision) return say(duena ? `Ese código es de «${duena.nombre}». Ingresalo en esa misión.`
+    : `Este código no es de «${mision.nombre}»: los de esta misión empiezan con ${mision.prefijo}. Si es el código de tu pedido, ingresalo en «¿Tenés un código de tu pedido?».`, false);
+  if (mision && semanalHecha(mision)) return say(`Ya canjeaste «${mision.nombre}» esta semana. Se renueva el lunes ${fechaCorta(lunesDe(semanaDe(Date.now()) + 1))}.`, false);
+  if (!CODIGO_Z_RE.test(codigoLimpio)) return say('El código no existe', false);      // con ese formato no puede existir
 
   const uid = user.uid, nombre = user.name, email = user.email;
-  btn.disabled = true; msgCodigoZ('Verificando tu código…', true);
+  if (mision) { semEnCurso[mision.id] = true; bloquearSem(mision, true); } else btn.disabled = true;
+  say('Verificando tu código…', true);
   try {
     const f = await loadOrThrow();
     // PASO 2 · Consulta a Firestore: el documento del código y el del cliente
@@ -1096,12 +1187,17 @@ async function validarCodigoZ(codigoIngresado) {
 
     // Los pasos 3 a 5 ocurren dentro de UNA transacción: se lee, se valida, se quema el código y se suman los puntos
     // en la misma operación atómica (así un código no se puede canjear dos veces ni quedar quemado sin dar los puntos).
-    const { puntos, r } = await Promise.race([
+    const { puntos, r, sem } = await Promise.race([
       f.runTransaction(f.db, async tx => {
         // Primero la billetera: si ya está en el tope se corta ACÁ y el código no se toca (queda sin usar)
         const cliente = await tx.get(refCliente);
-        const w = leerBilletera(cliente.exists() ? cliente.data() : {});
+        const dc = cliente.exists() ? cliente.data() : {};
+        const w = leerBilletera(dc);
         if (w.points >= TOPE_Z) throw new ErrorZ(MSG_TOPE, true);
+        // Misión semanal: si la cuenta ya la canjeó en la semana en curso (p. ej. desde otro celular), se corta ACÁ y el código no se toca
+        const sem = semanaDe(Date.now());
+        if (mision && semanaGuardada(dc[mision.campo]) >= sem)
+          throw Object.assign(new ErrorZ(`Ya canjeaste «${mision.nombre}» esta semana. Se renueva el lunes ${fechaCorta(lunesDe(sem + 1))}.`), { yaHecha: true });
         const snapshot = await tx.get(refCodigo);
         // PASO 3 · Validación de existencia
         if (!snapshot.exists()) throw new ErrorZ('El código no existe');
@@ -1112,29 +1208,52 @@ async function validarCodigoZ(codigoIngresado) {
         if (!Number.isInteger(puntos) || puntos <= 0) throw new ErrorZ('Este código no tiene puntos válidos. Escribinos por WhatsApp.');
         // PASO 5 · Quemado del código + acreditación de los puntos (misma operación). También queda quién lo canjeó y cuándo.
         //          sumarPuntos() aplica el tope de 1000, el bono de +30 al llegar a 500 acumulados y el estatus Leyenda.
+        //          Misión semanal: en la misma escritura queda marcada la semana en curso (semMartes / semCombo): las reglas de Firestore lo exigen.
         const res = sumarPuntos(w, puntos);
         tx.update(refCodigo, { usado: true, fecha_canje: new Date().toISOString(), canjeado_por: uid });
-        tx.set(refCliente, { ...camposBilletera(res), lastCode: codigoLimpio, nombre, email }, { merge: true });
-        return { puntos, r: res };
+        tx.set(refCliente, { ...camposBilletera(res), lastCode: codigoLimpio, nombre, email, ...(mision ? { [mision.campo]: sem } : {}) }, { merge: true });
+        return { puntos, r: res, sem };
       }),
       new Promise((_, rej) => setTimeout(() => rej(new ErrorZ('Está tardando más de lo normal. Esperá unos segundos y revisá tu saldo antes de volver a intentar.')), 20000))
     ]);
 
     // PASO 6 · Acreditación e interfaz: actualizar el contador, avisar y limpiar el campo
+    if (mision && (!user || user.uid !== uid)) return;                    // mientras se verificaba cerró sesión (o entró otra cuenta): los puntos ya quedaron en SU cuenta; acá no se pinta nada
     puntosZ = r.points; lifetimeZ = r.lifetime; bono500Z = r.bono500;
     if (r.esLeyenda) marcarLeyenda();                                     // 1.ª vez en 1000: esLeyenda = true (queda para siempre)
+    if (mision) { misionesZ[mision.id] = { semana: sem }; semBorrador[mision.id] = ''; msgSemanal(mision, textoCredito(r, puntos), true); }   // la tarjeta pasa a «Completada esta semana»
     paintPuntosZ(true); paintMisiones();
-    $('zCode').value = '';
-    msgCodigoZ(textoCredito(r, puntos), true);
+    if (!mision) { $('zCode').value = ''; msgCodigoZ(textoCredito(r, puntos), true); }
     toast(r.bono ? `⭐ ¡Sumaste ${ptsTxt(r.acreditados)} + ${r.bono} de bono!` : `⭐ ¡Sumaste ${ptsTxt(r.acreditados)}!`);
   } catch (e) {
-    if (e instanceof ErrorZ) { msgCodigoZ(e.message, false); if (e.tope) toast(e.message, 6000); if (/tardando/.test(e.message)) setTimeout(loadProfile, 5000); }
-    else {
+    if (mision && (!user || user.uid !== uid)) return;                    // otra sesión: el aviso no es para quien está mirando
+    if (e instanceof ErrorZ) {
+      say(e.message, false); if (e.tope) toast(e.message, 6000);
+      if (/tardando/.test(e.message)) setTimeout(loadProfile, 5000);
+      else if (e.yaHecha) loadProfile();                                  // ya estaba canjeada desde otro dispositivo: se actualiza la tarjeta
+    } else {
       console.error('[Z18] No se pudo canjear el código:', e);
-      msgCodigoZ((e && e.code) === 'unavailable' ? 'No hay conexión. Revisá tu internet e intentá de nuevo.' : 'No pudimos validar tu código ahora. Probá de nuevo en un momento.', false);
+      const code = e && e.code;
+      say(code === 'unavailable' ? 'No hay conexión. Revisá tu internet e intentá de nuevo.'
+        : mision && code === 'permission-denied' ? 'No pudimos validar tu código. Revisá que la fecha y la hora de tu celular estén bien y probá de nuevo.'
+        : 'No pudimos validar tu código ahora. Probá de nuevo en un momento.', false);
     }
-  } finally { btn.disabled = false; }
+  } finally { if (mision) { if (user && user.uid === uid) { delete semEnCurso[mision.id]; bloquearSem(mision, false); } } else btn.disabled = false; }
 }
+// Mientras se verifica un código de una misión semanal: el campo queda de solo lectura (conserva el foco) y el botón apagado
+const bloquearSem = (m, on) => {
+  const i = document.querySelector(`[data-sem-input="${m.id}"]`), b = document.querySelector(`[data-sem-btn="${m.id}"]`);
+  if (i) i.readOnly = on; if (b) b.disabled = on;
+};
+// Misiones semanales: el código se escribe en la tarjeta de SU misión. La lista se repinta, por eso los eventos van delegados en document.
+document.addEventListener('submit', e => {
+  const f = e.target && e.target.closest && e.target.closest('[data-sem-form]');
+  if (!f) return;
+  e.preventDefault();
+  const m = MISIONES_SEM.find(x => x.id === f.dataset.semForm), i = f.querySelector('[data-sem-input]');
+  if (m && i) validarCodigoZ(i.value, m);
+});
+document.addEventListener('input', e => { const i = e.target && e.target.closest && e.target.closest('[data-sem-input]'); if (i) semBorrador[i.dataset.semInput] = i.value; });
 
 // ► Canjear una recompensa: resta los puntos (transacción en Firestore) y suma el producto al carrito a $0
 const canjearRecompensa = async name => {
@@ -1321,7 +1440,7 @@ $('authBack').onclick = () => $('auth').dataset.view === 'register' ? show('logi
 $('logout').onclick = () => {
   user = null; try { localStorage.removeItem('z18_session'); } catch (e) {}
   loadFirebase().then(f => f.signOut(f.auth)).catch(() => {});   // correo, Google o Facebook: las 3 cierran sesión en Firebase
-  puntosZ = lifetimeZ = 0; bono500Z = false; misionesZ = {}; canjeArmado = null; msgCodigoZ(''); $('zCode').value = ''; favoriteBurger = paymentMethod = kitchenNotes = ''; userOrders = []; prefsDirty = false; setPrefsMsg('');   // que la próxima cuenta no vea estos datos
+  puntosZ = lifetimeZ = 0; bono500Z = false; misionesZ = {}; semBorrador = {}; semMsg = {}; semEnCurso = {}; semVista = null; clearTimeout(lunesTimer); canjeArmado = null; msgCodigoZ(''); $('zCode').value = ''; favoriteBurger = paymentMethod = kitchenNotes = ''; userOrders = []; prefsDirty = false; setPrefsMsg('');   // que la próxima cuenta no vea estos datos
   paintProfile();
   paintUser(); closeAuth(); toast('Sesión cerrada');
 };
