@@ -89,6 +89,7 @@ const waRaw = t => `https://wa.me/${WA}?text=${encodeURIComponent(t)}`;         
 const wa = t => waRaw('¡Hola Z18! ' + (t ? 'Quiero consultar por: ' + t : 'Quiero hacer un pedido.'));
 const PRICE = {};                                                                              // nombre → precio (se completa al renderizar)
 const HIST_INICIAL = 3, HIST_PASO = 3;                                                          // historial de pedidos: al principio se ven 3 y cada «Ver más» suma 3 más
+const MAX_FAV_PEDIDOS = 5;                                                                      // pedidos favoritos (⭐ del historial): cuántos se pueden fijar a la vez
 let favoriteBurger = '', paymentMethod = '', kitchenNotes = '', userOrders = [], histVisibles = HIST_INICIAL, prefsDirty = false, puntosZ = 0;   // perfil del cliente (se carga de Firestore al iniciar sesión)
 let lifetimeZ = 0, bono500Z = false, misionesZ = {};                                           // Puntos Z acumulados de toda la vida (no bajan al canjear), si ya cobró el bono de los 500 y el estado de sus misiones
 let user = null;   // sesión: { name, email, phone, avatar, uid, esLeyenda } se guarda en este dispositivo (nunca la contraseña); { misiones, historial } viven solo en memoria (ver «PUNTOS Z»)
@@ -396,7 +397,8 @@ const loadFirebase = () => fbLoading || (fbLoading = (async () => {
                  updateProfile: authLib.updateProfile,
                  // Favorita, preferencias, Puntos Z e historial: todo vive en Firestore (users/{uid}, users/{uid}/orders y codigos_puntos/{código})
                  doc: storeLib.doc, getDoc: storeLib.getDoc, setDoc: storeLib.setDoc, runTransaction: storeLib.runTransaction,
-                 collection: storeLib.collection, query: storeLib.query, orderBy: storeLib.orderBy, limit: storeLib.limit, getDocs: storeLib.getDocs,
+                 collection: storeLib.collection, query: storeLib.query, where: storeLib.where, orderBy: storeLib.orderBy, limit: storeLib.limit, getDocs: storeLib.getDocs,
+                 updateDoc: storeLib.updateDoc,
                  serverTimestamp: storeLib.serverTimestamp });
 })().catch(e => { fbLoading = null; throw e; }));
 
@@ -896,7 +898,7 @@ const MISIONES = [
   // Semanales: se canjean con un código de Z18 que empieza con `prefijo`; `campo` guarda el número de semana del último canje.
   // `etiqueta` = la recompensa que se muestra a la derecha (los puntos reales son los del código que entrega Z18).
   { id: 'rescateMartes', nombre: 'Rescate de Martes', icono: 'calendar-day', semanal: true, prefijo: 'Z18-M', campo: 'semMartes', etiqueta: '+10 PTS',
-    req: 'Hacé un pedido un martes o miércoles y te duplicamos los puntos de esa compra.' },
+    req: 'Hacé un pedido un martes o miércoles y ganá +10 Puntos Z.' },
   { id: 'comboCompleto', nombre: 'Combo Completo',    icono: 'utensils',     semanal: true, prefijo: 'Z18-X', campo: 'semCombo',  etiqueta: '+10 PTS',
     req: 'Pedí con un extra: aderezo, postre o adicional (huevo, bacon, cheddar, medallón).' },
   { id: 'embajador',     nombre: 'Embajador Z18',     icono: 'share-nodes',  codigo: 'Z18-EMBAJADOR',     puntos: 15, campo: 'mis_embajador',
@@ -1306,17 +1308,30 @@ const paintFavorites = () => {
 
 // Un pedido del historial: fecha, resumen de productos y botón para volver a pedir lo mismo
 const formatDate = ts => { try { return ts.toDate().toLocaleString('es-UY', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }); } catch (e) { return ''; } };
-const historyItem = o => `
-  <div class="panel !p-3">
-    <div class="flex items-start justify-between gap-3"><p class="text-xs text-muted">${formatDate(o.createdAt)}</p><b class="shrink-0 text-fire">${money(o.total)}</b></div>
+const STAR_PATH = 'M12 2.6l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.5l-5.9 3.1 1.2-6.5L2.5 9.5l6.6-.9L12 2.6z';   // la misma estrella ⭐ del menú
+const historyItem = o => {
+  const fav = o.fav === true, fecha = formatDate(o.createdAt);
+  return `
+  <div class="panel !p-3${fav ? ' pedido-fav' : ''}">
+    <div class="flex items-start justify-between gap-2">
+      <p class="text-xs text-muted">${fecha}</p>
+      <div class="flex shrink-0 items-center gap-1"><b class="text-fire">${money(o.total)}</b>
+        <button type="button" data-fav-pedido="${o.id}" aria-pressed="${fav}" aria-label="Pedido favorito${fecha ? ' del ' + fecha : ''}" title="${fav ? 'Es tu favorito (tocá para quitarlo)' : 'Marcar como favorito'}" class="fav-pedido"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${STAR_PATH}"/></svg></button></div>
+    </div>
     <p class="mt-1 text-sm leading-snug text-ink">${(o.items || []).map(it => `${it.q}× ${it.n}`).join(', ')}</p>
     <button type="button" data-repeat="${o.id}" class="btn-ghost mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg text-xs">${ico('rotate-right')} Repetir pedido</button>
   </div>`;
-// Se muestran los últimos `histVisibles` pedidos (los más nuevos primero); si quedan más, aparece «Ver más» con un contador. Las misiones siguen leyendo TODOS los
-// pedidos que trae la cuenta (userOrders), no solo los que se ven acá.
+};
+// Orden: los pedidos favoritos (⭐) van fijados arriba y después el resto; dentro de cada grupo, del más nuevo al más viejo.
+const ordenHistorial = () => {
+  const ms = o => msDe(o.createdAt) || 0, porFecha = (a, b) => ms(b) - ms(a);
+  return [...userOrders.filter(o => o.fav === true).sort(porFecha), ...userOrders.filter(o => o.fav !== true).sort(porFecha)];
+};
+// Se muestran los primeros `histVisibles` pedidos de ese orden (los favoritos y después los más nuevos); si quedan más, aparece «Ver más» con un contador.
+// Las misiones siguen leyendo TODOS los pedidos que trae la cuenta (userOrders), no solo los que se ven acá.
 const renderHistory = () => {
-  const total = userOrders.length, n = Math.min(histVisibles, total);
-  $('orderHistory').innerHTML = total ? userOrders.slice(0, n).map(historyItem).join('')
+  const lista = ordenHistorial(), total = lista.length, n = Math.min(histVisibles, total);
+  $('orderHistory').innerHTML = total ? lista.slice(0, n).map(historyItem).join('')
     : `<p class="py-4 text-center text-sm text-muted">Todavía no hiciste ningún pedido.</p>`;
   const quedan = total - n, texto = quedan > 0 ? `Mostrando ${n} de ${total} pedidos` : '';
   $('histMoreBox').hidden = quedan <= 0;
@@ -1331,17 +1346,57 @@ const verMasPedidos = () => {
   if ($('histMoreBox').hidden) { const nuevo = $('orderHistory').children[antes]; if (nuevo) { nuevo.tabIndex = -1; nuevo.focus({ preventScroll: true }); } }
 };
 
+// ⭐ de un pedido del historial: lo marca (o lo desmarca) como favorito. Se guarda en el propio pedido (campo fav, en users/{uid}/orders/{id}), así que viaja con
+// la cuenta a cualquier celular. Los favoritos quedan resaltados y fijados arriba del historial (ordenHistorial) y se cargan siempre, aunque ya no estén entre los
+// últimos 10 pedidos (loadProfile). Se pueden fijar hasta MAX_FAV_PEDIDOS. Como la ⭐ del menú: se marca al instante y, si no se pudo guardar, vuelve atrás.
+const favEnVuelo = new Map();                       // id del pedido → valor que se está guardando (mientras tanto, datos viejos que lleguen del servidor no lo pisan)
+let favToqueMs = -1e9;                              // instante (performance.now) del último toque en una ⭐: al marcar, la tarjeta cambia de lugar y un 2.º toque casi instantáneo caería en OTRA tarjeta
+const FAV_PAUSA_MS = 350;
+const aplicarFavPedido = (id, val) => userOrders.forEach(o => { if (o.id === id) o.fav = val; });
+const enfocarFavPedido = id => {                    // el repintado recrea los botones: el foco vuelve a la ⭐ del mismo pedido, y se la deja a la vista si el pedido cambió de lugar
+  const b = [...document.querySelectorAll('[data-fav-pedido]')].find(x => x.dataset.favPedido === id);
+  if (b) { b.focus({ preventScroll: true }); b.scrollIntoView({ block: 'nearest' }); }
+};
+const toggleFavPedido = async id => {
+  if (!user || !user.uid) return;
+  const o = userOrders.find(x => x.id === id); if (!o) return;
+  const uid = user.uid, prev = o.fav === true, next = !prev;
+  if (next && userOrders.filter(x => x.fav === true).length >= MAX_FAV_PEDIDOS) { toast(`Podés fijar hasta ${MAX_FAV_PEDIDOS} pedidos favoritos. Quitá uno para sumar otro.`, 2600); return; }
+  if (performance.now() - favToqueMs < FAV_PAUSA_MS) return;                // doble toque sin querer: se ignora (la tarjeta ya se movió de lugar)
+  favToqueMs = performance.now();
+  aplicarFavPedido(id, next); favEnVuelo.set(id, next); renderHistory(); enfocarFavPedido(id);
+  try {
+    const f = await loadOrThrow();
+    await f.updateDoc(f.doc(f.db, 'users', uid, 'orders', id), { fav: next });
+    if (user && user.uid === uid) toast(next ? '⭐ Pedido favorito: quedó fijado arriba' : 'Quitamos el pedido de tus favoritos');
+  } catch (e) {
+    console.error('[Z18] No se pudo guardar el pedido favorito:', e);
+    if (user && user.uid === uid) {
+      if (favEnVuelo.get(id) === next) { aplicarFavPedido(id, prev); renderHistory(); enfocarFavPedido(id); }
+      toast('No se pudo guardar tu favorito. Probá de nuevo.');
+    }
+  } finally { if (favEnVuelo.get(id) === next) favEnVuelo.delete(id); }
+};
+
 const setPrefsMsg = (t, ok) => { const m = $('prefsMsg'); m.textContent = t; m.className = ok ? 'mt-2 text-center text-xs font-semibold text-gold' : 'err mt-2 text-center'; };
 const paintProfile = () => {
   paintPuntosZ(); paintFavorites(); renderHistory(); paintMisiones(); paintLeyenda();
   if (!prefsDirty) { $('payMethod').value = paymentMethod; $('kitchenNotes').value = kitchenNotes; }   // no pisa lo que el cliente está escribiendo
 };
 
-// Trae de Firestore el saldo de Puntos Z, la favorita, las preferencias y los últimos 10 pedidos del cliente
+// Pedidos favoritos (⭐): los marcados con fav: true, vengan de cuando vengan (los últimos 10 pedidos ya no los incluirían si son viejos)
+const cargarPedidosFav = async (f, uid) => (await f.getDocs(f.query(f.collection(f.db, 'users', uid, 'orders'), f.where('fav', '==', true), f.limit(20)))).docs.map(x => ({ id: x.id, ...x.data() }));
+// Junta los últimos 10 pedidos con los favoritos (sin repetir), del más nuevo al más viejo. Un favorito que todavía se está guardando manda sobre lo que traiga el servidor.
+const mezclarPedidos = (recientes, favs) => {
+  const porId = new Map(); [...recientes, ...favs].forEach(o => { if (!porId.has(o.id)) porId.set(o.id, o); });
+  return [...porId.values()].map(o => (favEnVuelo.has(o.id) ? { ...o, fav: favEnVuelo.get(o.id) } : o)).sort((a, b) => (msDe(b.createdAt) || 0) - (msDe(a.createdAt) || 0));
+};
+// Trae de Firestore el saldo de Puntos Z, la favorita, las preferencias, los últimos 10 pedidos del cliente y sus pedidos favoritos
 const loadProfile = async () => {
   if (!user || !user.uid) return;
   const uid = user.uid;
   let f; try { f = await loadOrThrow(); } catch (e) { return; }         // sin conexión: el resto de la web sigue andando
+  const pFavs = cargarPedidosFav(f, uid).catch(e => { console.error('[Z18] No se pudieron cargar tus pedidos favoritos:', e); return []; });   // en paralelo con lo demás
   let d = null, orders = null;
   try { const s = await f.getDoc(f.doc(f.db, 'users', uid)); d = s.exists() ? s.data() : {}; }
   catch (e) { console.error('[Z18] No se pudo cargar tu perfil:', e); }
@@ -1349,6 +1404,7 @@ const loadProfile = async () => {
     const q = f.query(f.collection(f.db, 'users', uid, 'orders'), f.orderBy('createdAt', 'desc'), f.limit(10));
     orders = (await f.getDocs(q)).docs.map(x => ({ id: x.id, ...x.data() }));
   } catch (e) { console.error('[Z18] No se pudo cargar tu historial:', e); }
+  const favs = await pFavs;
   if (!user || user.uid !== uid) return;                                // mientras cargaba cerró sesión o entró otra cuenta
   if (d) {
     const w = leerBilletera(d);
@@ -1360,7 +1416,7 @@ const loadProfile = async () => {
     paymentMethod = PAY_METHODS.includes(d.paymentMethod) ? d.paymentMethod : '';
     kitchenNotes = typeof d.kitchenNotes === 'string' ? d.kitchenNotes : '';
   }
-  if (orders) userOrders = orders;
+  if (orders) userOrders = mezclarPedidos(orders, favs);
   paintProfile();
 };
 
@@ -1421,6 +1477,8 @@ document.addEventListener('click', e => {
     return;
   }
   if (e.target.closest('#histMore')) { vibrate(); verMasPedidos(); return; }
+  const fp = e.target.closest('[data-fav-pedido]');
+  if (fp) { vibrate(); toggleFavPedido(fp.dataset.favPedido); return; }
   const hb = e.target.closest('[data-repeat]');
   if (hb) repeatOrder(hb.dataset.repeat);
 });
@@ -1460,7 +1518,7 @@ $('authBack').onclick = () => $('auth').dataset.view === 'register' ? show('logi
 $('logout').onclick = () => {
   user = null; try { localStorage.removeItem('z18_session'); } catch (e) {}
   loadFirebase().then(f => f.signOut(f.auth)).catch(() => {});   // correo, Google o Facebook: las 3 cierran sesión en Firebase
-  puntosZ = lifetimeZ = 0; bono500Z = false; misionesZ = {}; semBorrador = {}; semMsg = {}; semEnCurso = {}; semVista = null; clearTimeout(lunesTimer); canjeArmado = null; msgCodigoZ(''); $('zCode').value = ''; favoriteBurger = paymentMethod = kitchenNotes = ''; userOrders = []; histVisibles = HIST_INICIAL; prefsDirty = false; setPrefsMsg('');   // que la próxima cuenta no vea estos datos
+  puntosZ = lifetimeZ = 0; bono500Z = false; misionesZ = {}; semBorrador = {}; semMsg = {}; semEnCurso = {}; semVista = null; clearTimeout(lunesTimer); canjeArmado = null; msgCodigoZ(''); $('zCode').value = ''; favoriteBurger = paymentMethod = kitchenNotes = ''; userOrders = []; favEnVuelo.clear(); histVisibles = HIST_INICIAL; prefsDirty = false; setPrefsMsg('');   // que la próxima cuenta no vea estos datos
   paintProfile();
   paintUser(); closeAuth(); toast('Sesión cerrada');
 };
