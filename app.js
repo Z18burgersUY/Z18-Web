@@ -88,7 +88,8 @@ const ico = (name, cls = '') => {
 const waRaw = t => `https://wa.me/${WA}?text=${encodeURIComponent(t)}`;                       // enlace con mensaje codificado
 const wa = t => waRaw('¡Hola Z18! ' + (t ? 'Quiero consultar por: ' + t : 'Quiero hacer un pedido.'));
 const PRICE = {};                                                                              // nombre → precio (se completa al renderizar)
-let favoriteBurger = '', paymentMethod = '', kitchenNotes = '', userOrders = [], prefsDirty = false, puntosZ = 0;   // perfil del cliente (se carga de Firestore al iniciar sesión)
+const HIST_INICIAL = 3, HIST_PASO = 3;                                                          // historial de pedidos: al principio se ven 3 y cada «Ver más» suma 3 más
+let favoriteBurger = '', paymentMethod = '', kitchenNotes = '', userOrders = [], histVisibles = HIST_INICIAL, prefsDirty = false, puntosZ = 0;   // perfil del cliente (se carga de Firestore al iniciar sesión)
 let lifetimeZ = 0, bono500Z = false, misionesZ = {};                                           // Puntos Z acumulados de toda la vida (no bajan al canjear), si ya cobró el bono de los 500 y el estado de sus misiones
 let user = null;   // sesión: { name, email, phone, avatar, uid, esLeyenda } se guarda en este dispositivo (nunca la contraseña); { misiones, historial } viven solo en memoria (ver «PUNTOS Z»)
 const PANELS = ['cart', 'overlay', 'auth', 'authOverlay', 'upsell', 'upsellOverlay', 'misionModal', 'misionOverlay', 'clearModal', 'clearOverlay'];
@@ -618,6 +619,10 @@ $('panes').innerHTML = `
     <div>
       <h3 class="mb-3 font-display text-2xl tracking-wide">Historial de pedidos</h3>
       <div id="orderHistory" class="space-y-3"></div>
+      <div id="histMoreBox" class="mt-3" hidden>
+        <button id="histMore" type="button" aria-controls="orderHistory" class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-hairline text-sm font-bold text-ink transition hover:border-fire active:scale-95">Ver más ${ico('chevron-down', 'text-xs')}</button>
+        <p id="histCount" role="status" aria-live="polite" class="mt-2 text-center text-xs text-muted2"></p>
+      </div>
     </div>
 
     <div class="flex items-center justify-between rounded-xl border border-cardborder bg-cardbg px-4 py-3">
@@ -682,7 +687,7 @@ const openAuth = (view = user ? 'account' : 'login') => {
   $('auth').classList.remove('hidden'); $('authOverlay').classList.remove('hidden'); $('auth').inert = false;
   lock(true); document.body.style.overflow = 'hidden'; show(view);
   loadFirebase().catch(() => {});                       // precarga el acceso con Google/Facebook para que la ventana abra al instante
-  if (view === 'account') loadProfile();                // trae puntos, historial, favorita y preferencias desde Firestore
+  if (view === 'account') { histVisibles = HIST_INICIAL; renderHistory(); loadProfile(); }   // el historial arranca con los últimos 3; trae puntos, historial, favorita y preferencias desde Firestore
 };
 const closeAuth = () => {
   $('auth').classList.add('hidden'); $('authOverlay').classList.add('hidden'); $('auth').inert = true;
@@ -890,7 +895,7 @@ const MISIONES = [
     req: 'Hacé tu 1.er pedido registrado.' },
   // Semanales: se canjean con un código de Z18 que empieza con `prefijo`; `campo` guarda el número de semana del último canje.
   // `etiqueta` = la recompensa que se muestra a la derecha (los puntos reales son los del código que entrega Z18).
-  { id: 'rescateMartes', nombre: 'Rescate de Martes', icono: 'calendar-day', semanal: true, prefijo: 'Z18-M', campo: 'semMartes', etiqueta: 'PUNTOS DOBLES',
+  { id: 'rescateMartes', nombre: 'Rescate de Martes', icono: 'calendar-day', semanal: true, prefijo: 'Z18-M', campo: 'semMartes', etiqueta: '+10 PTS',
     req: 'Hacé un pedido un martes o miércoles y te duplicamos los puntos de esa compra.' },
   { id: 'comboCompleto', nombre: 'Combo Completo',    icono: 'utensils',     semanal: true, prefijo: 'Z18-X', campo: 'semCombo',  etiqueta: '+10 PTS',
     req: 'Pedí con un extra: aderezo, postre o adicional (huevo, bacon, cheddar, medallón).' },
@@ -1307,9 +1312,23 @@ const historyItem = o => `
     <p class="mt-1 text-sm leading-snug text-ink">${(o.items || []).map(it => `${it.q}× ${it.n}`).join(', ')}</p>
     <button type="button" data-repeat="${o.id}" class="btn-ghost mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg text-xs">${ico('rotate-right')} Repetir pedido</button>
   </div>`;
+// Se muestran los últimos `histVisibles` pedidos (los más nuevos primero); si quedan más, aparece «Ver más» con un contador. Las misiones siguen leyendo TODOS los
+// pedidos que trae la cuenta (userOrders), no solo los que se ven acá.
 const renderHistory = () => {
-  $('orderHistory').innerHTML = userOrders.length ? userOrders.map(historyItem).join('')
+  const total = userOrders.length, n = Math.min(histVisibles, total);
+  $('orderHistory').innerHTML = total ? userOrders.slice(0, n).map(historyItem).join('')
     : `<p class="py-4 text-center text-sm text-muted">Todavía no hiciste ningún pedido.</p>`;
+  const quedan = total - n, texto = quedan > 0 ? `Mostrando ${n} de ${total} pedidos` : '';
+  $('histMoreBox').hidden = quedan <= 0;
+  if ($('histCount').textContent !== texto) $('histCount').textContent = texto;     // el lector de pantalla anuncia solo cuando cambia
+};
+// «Ver más»: suma HIST_PASO pedidos. El botón vive fuera de la lista, así que conserva el foco entre toques; cuando ya no quedan más desaparece y el foco pasa
+// al primer pedido nuevo (para no perder el lugar con teclado o lector de pantalla).
+const verMasPedidos = () => {
+  const antes = Math.min(histVisibles, userOrders.length);
+  histVisibles += HIST_PASO;
+  renderHistory();
+  if ($('histMoreBox').hidden) { const nuevo = $('orderHistory').children[antes]; if (nuevo) { nuevo.tabIndex = -1; nuevo.focus({ preventScroll: true }); } }
 };
 
 const setPrefsMsg = (t, ok) => { const m = $('prefsMsg'); m.textContent = t; m.className = ok ? 'mt-2 text-center text-xs font-semibold text-gold' : 'err mt-2 text-center'; };
@@ -1401,6 +1420,7 @@ document.addEventListener('click', e => {
     } else { canjeArmado = null; canjearRecompensa(name); }             // 2ª pulsación: canjea
     return;
   }
+  if (e.target.closest('#histMore')) { vibrate(); verMasPedidos(); return; }
   const hb = e.target.closest('[data-repeat]');
   if (hb) repeatOrder(hb.dataset.repeat);
 });
@@ -1440,7 +1460,7 @@ $('authBack').onclick = () => $('auth').dataset.view === 'register' ? show('logi
 $('logout').onclick = () => {
   user = null; try { localStorage.removeItem('z18_session'); } catch (e) {}
   loadFirebase().then(f => f.signOut(f.auth)).catch(() => {});   // correo, Google o Facebook: las 3 cierran sesión en Firebase
-  puntosZ = lifetimeZ = 0; bono500Z = false; misionesZ = {}; semBorrador = {}; semMsg = {}; semEnCurso = {}; semVista = null; clearTimeout(lunesTimer); canjeArmado = null; msgCodigoZ(''); $('zCode').value = ''; favoriteBurger = paymentMethod = kitchenNotes = ''; userOrders = []; prefsDirty = false; setPrefsMsg('');   // que la próxima cuenta no vea estos datos
+  puntosZ = lifetimeZ = 0; bono500Z = false; misionesZ = {}; semBorrador = {}; semMsg = {}; semEnCurso = {}; semVista = null; clearTimeout(lunesTimer); canjeArmado = null; msgCodigoZ(''); $('zCode').value = ''; favoriteBurger = paymentMethod = kitchenNotes = ''; userOrders = []; histVisibles = HIST_INICIAL; prefsDirty = false; setPrefsMsg('');   // que la próxima cuenta no vea estos datos
   paintProfile();
   paintUser(); closeAuth(); toast('Sesión cerrada');
 };
