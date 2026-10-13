@@ -98,6 +98,21 @@ a:focus-visible { outline: 2px solid #ffb700; outline-offset: 2px; }
 .fav-star.is-fav svg { fill: currentColor; }
 .menu-card.is-fav-card { border-color: #ffb700 !important; box-shadow: 0 0 0 1px #ffb700, 0 12px 30px -10px rgba(255, 183, 0, .5); }
 @media (prefers-reduced-motion: reduce) { .fav-star { transition: none; } .fav-star:hover, .fav-star:active { transform: none; } }
+/* Pedidos favoritos ⭐ del historial (Mi cuenta): estrella de 44 px (se solapa con el margen de la tarjeta para no agrandarla), vacía al principio y dorada y llena
+   cuando el pedido es favorito; la tarjeta favorita lleva borde dorado. */
+.fav-pedido { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin: -.65rem -.65rem -.65rem 0; border-radius: 9999px; color: var(--z-muted2);
+              transition: transform .15s, color .15s; }
+.fav-pedido svg { width: 1.4rem; height: 1.4rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.fav-pedido:hover { color: #ffb700; transform: scale(1.1); }
+.fav-pedido:active { transform: scale(.92); }
+.fav-pedido:focus-visible { outline: 2px solid #ffb700; outline-offset: -2px; }
+.fav-pedido[aria-pressed="true"] { color: #ffb700; }
+.fav-pedido[aria-pressed="true"] svg { fill: currentColor; }
+.panel.pedido-fav { border-color: #ffb700; box-shadow: 0 0 0 1px rgba(255, 183, 0, .55), 0 10px 24px -14px rgba(255, 183, 0, .6); }
+[data-theme="light"] .fav-pedido:hover, [data-theme="light"] .fav-pedido[aria-pressed="true"] { color: #b45309; }
+[data-theme="light"] .fav-pedido:focus-visible { outline-color: #b45309; }
+[data-theme="light"] .panel.pedido-fav { border-color: #d97706; box-shadow: 0 0 0 1px rgba(217, 119, 6, .4), 0 10px 24px -14px rgba(217, 119, 6, .5); }
+@media (prefers-reduced-motion: reduce) { .fav-pedido { transition: none; } .fav-pedido:hover, .fav-pedido:active { transform: none; } }
 /* Contador de Puntos Z: pequeño "pop" cuando suma */
 @keyframes zpop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
 .z-pop { animation: zpop .6s ease; }
