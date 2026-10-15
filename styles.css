@@ -190,3 +190,48 @@ html { scroll-behavior: smooth; }
 /* Mensajes de canje (misiones semanales y cuadro «¿Tenés un código de tu pedido?»): en modo claro, rojo y dorado más oscuros para que se lean sobre blanco */
 [data-theme="light"] [data-sem-msg].err, [data-theme="light"] #zCodeMsg.err { color: #b91c1c; }
 [data-theme="light"] [data-sem-msg].text-gold, [data-theme="light"] #zCodeMsg.text-gold { color: #b45309; }
+
+/* ═════════════════ Campanita de avisos 🔔 (botón de la barra superior + panel lateral) ═════════════════
+   Los colores salen de variables --campana-*: para vestirla de un evento (Halloween, Navidad…) alcanza con redefinirlas en html[data-evento="…"]
+   (event-manager.js), sin tocar el resto. La lógica vive en app.js, sección «AVISOS». */
+:root {
+  --campana-badge: #d93800;      /* fondo del contador de avisos sin leer */
+  --campana-badge-tx: #ffffff;   /* número del contador */
+  --campana-acento: #ff5500;     /* borde de la campanita cuando hay avisos nuevos y de los botones del panel al pasar el mouse */
+  --campana-nuevo: #ffb700;      /* marca de «sin leer» de cada aviso (barra lateral y fondo) */
+  --campana-ico: #ffb700;        /* ícono de cada aviso */
+}
+[data-theme="light"] { --campana-nuevo: #d97706; --campana-ico: #b45309; }
+.campana { position: relative; transition: border-color .2s, transform .15s; }
+.campana:active { transform: scale(.94); }
+.campana:focus-visible { outline: 2px solid #ffb700; outline-offset: 2px; }
+.campana.tiene-avisos { border-color: var(--campana-acento); }
+.campana-badge { position: absolute; top: -.3rem; right: -.3rem; display: grid; place-items: center; min-width: 1.25rem; height: 1.25rem; padding: 0 .3rem; border-radius: 9999px;
+                 background: var(--campana-badge); color: var(--campana-badge-tx); font: 800 .7rem/1 Montserrat, sans-serif; box-shadow: 0 0 0 2px var(--z-bg); pointer-events: none; }
+.campana-badge[hidden] { display: none; }
+@keyframes campana-ring { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(16deg); } 30% { transform: rotate(-13deg); } 45% { transform: rotate(10deg); } 60% { transform: rotate(-7deg); } 75% { transform: rotate(3deg); } }
+.campana-ring .ico { transform-origin: 50% 10%; animation: campana-ring .9s ease-in-out; }
+@media (prefers-reduced-motion: reduce) { .campana, .avisos-btn { transition: none; } .campana:active { transform: none; } .campana-ring .ico { animation: none; } }
+
+/* Panel: zonas seguras del celular, botones de arriba y tarjetas de cada aviso */
+#avisos .safe-avisos-top { padding-top: calc(1rem + env(safe-area-inset-top)); }
+#avisos .safe-avisos-bottom { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+.avisos-btn { display: flex; min-height: 2.75rem; align-items: center; justify-content: center; gap: .5rem; padding: 0 .75rem; border: 1px solid var(--z-hairline); border-radius: .75rem;
+              background: var(--z-card); color: var(--z-ink); font-size: .75rem; font-weight: 700; line-height: 1.2; transition: border-color .15s, opacity .15s; }
+.avisos-btn:hover:not(:disabled) { border-color: var(--campana-acento); }
+.avisos-btn:active:not(:disabled) { transform: scale(.97); }
+.avisos-btn:focus-visible { outline: 2px solid #ffb700; outline-offset: 2px; }
+.avisos-btn:disabled { opacity: .4; cursor: not-allowed; }
+.aviso { display: flex; gap: .75rem; padding: .85rem; background: var(--z-card); border: 1px solid var(--z-border); border-radius: 1rem; }
+.aviso-nuevo { border-color: var(--campana-nuevo); box-shadow: inset 4px 0 0 var(--campana-nuevo); }
+.aviso-ico { display: grid; place-items: center; flex-shrink: 0; width: 2.5rem; height: 2.5rem; border-radius: 9999px; background: var(--z-chip); color: var(--campana-ico); font-size: 1.1rem; }
+.aviso-cuerpo { display: block; width: 100%; padding: 0; text-align: left; border-radius: .5rem; }
+button.aviso-cuerpo:focus-visible { outline: 2px solid #ffb700; outline-offset: 3px; }
+.aviso-tag { display: block; font-size: .65rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--z-muted2); }
+.aviso-titulo { display: block; margin-top: .1rem; font-size: .875rem; font-weight: 600; line-height: 1.3; color: var(--z-muted); }
+.aviso-texto { display: block; margin-top: .2rem; font-size: .75rem; line-height: 1.45; color: var(--z-muted); overflow-wrap: anywhere; }
+.aviso-nuevo .aviso-titulo { font-weight: 800; color: var(--z-ink); }
+.aviso-accion { margin-top: .65rem; min-height: 2.5rem; padding: 0 1rem; border-radius: .6rem; font-size: .7rem; }
+.aviso-vacio { padding: 2.5rem 1rem; text-align: center; list-style: none; }
+/* Los botones de los avisos llevan a una parte de «Mi cuenta»: al bajar hasta ahí no la tapa la barra fija de arriba del panel */
+#puntosZ, #misionesZ, #zRewardsBox { scroll-margin-top: 5rem; }

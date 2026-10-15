@@ -78,6 +78,7 @@ const MENU = {
 /* ================= 2) UTILIDADES ================= */
 const $ = id => document.getElementById(id);
 const money = n => '$' + n.toLocaleString('es-UY');
+const escHtml = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));   // texto que viene de datos (no de nosotros) y va dentro de un innerHTML
 // Íconos: SVG inline (el sprite <symbol id="i-…"> está al comienzo del <body> en index.html). Reemplaza a FontAwesome.
 //   ico('fire', 'text-fire')  →  <svg class="ico text-fire" viewBox="…"><use href="#i-fire"/></svg>   (los de estilo "regular" terminan en -r: 'eye-r')
 const ICO_VB = {};
@@ -91,9 +92,10 @@ const PRICE = {};                                                               
 const HIST_INICIAL = 3, HIST_PASO = 3;                                                          // historial de pedidos: al principio se ven 3 y cada «Ver más» suma 3 más
 const MAX_FAV_PEDIDOS = 5;                                                                      // pedidos favoritos (⭐ del historial): cuántos se pueden fijar a la vez
 let favoriteBurger = '', paymentMethod = '', kitchenNotes = '', userOrders = [], histVisibles = HIST_INICIAL, prefsDirty = false, puntosZ = 0;   // perfil del cliente (se carga de Firestore al iniciar sesión)
-let lifetimeZ = 0, bono500Z = false, misionesZ = {};                                           // Puntos Z acumulados de toda la vida (no bajan al canjear), si ya cobró el bono de los 500 y el estado de sus misiones
+let perfilListo = false;                                                                        // true cuando ya llegaron de Firestore los datos de la cuenta (los avisos personales de la campanita esperan a eso)
+let lifetimeZ = 0, bono500Z = false, misionesZ = {};                                        // Puntos Z acumulados de toda la vida (no bajan al canjear), si ya cobró el bono de los 500 y el estado de sus misiones
 let user = null;   // sesión: { name, email, phone, avatar, uid, esLeyenda } se guarda en este dispositivo (nunca la contraseña); { misiones, historial } viven solo en memoria (ver «PUNTOS Z»)
-const PANELS = ['cart', 'overlay', 'auth', 'authOverlay', 'upsell', 'upsellOverlay', 'misionModal', 'misionOverlay', 'clearModal', 'clearOverlay'];
+const PANELS = ['cart', 'overlay', 'avisos', 'avisosOverlay', 'auth', 'authOverlay', 'upsell', 'upsellOverlay', 'misionModal', 'misionOverlay', 'clearModal', 'clearOverlay'];
 // Deja inerte (sin foco ni clics) el resto de la página mientras hay un panel abierto
 const lock = open => [...document.body.children].forEach(el => { if (!PANELS.includes(el.id) && el.tagName !== 'SCRIPT') el.inert = open; });
 const key = (n, p) => (PRICE[n] = p, encodeURIComponent(n));
@@ -592,7 +594,7 @@ $('panes').innerHTML = `
       <ul id="misionesList" class="space-y-3"></ul>
     </div>
 
-    <div>
+    <div id="zRewardsBox">
       <h3 class="mb-1 font-display text-2xl tracking-wide">Recompensas Z</h3>
       <p class="mb-3 text-xs text-muted">Tocá Canjear dos veces para confirmar. El producto se suma a tu carrito a $0.</p>
       <div id="zRewards" class="grid grid-cols-2 gap-3"></div>
@@ -675,6 +677,7 @@ const paintUser = () => {
   $('accPhone').textContent = user && user.phone ? user.phone : '';
   paintAvatar(); paintLeyenda();
   renderCart();                                       // el pedido de WhatsApp incluye tu nombre y teléfono
+  programarAvisos();                                  // entró / salió alguien: la campanita cambia de avisos
 };
 
 const show = view => {
@@ -1022,6 +1025,7 @@ const programarLunes = () => {
   lunesTimer = setTimeout(() => paintMisiones(), Math.min(Math.max(falta, 0) + 1000, 2147483647));
 };
 const paintMisiones = () => {
+  programarAvisos();                                                                  // el estado de las misiones cambió: la campanita se entera
   if (!user) return;
   user.misiones = misionesZ; user.historial = obtenerHistorial();                     // estructura del objeto de usuario (ver arriba)
   const sem = semanaDe(Date.now());
@@ -1141,6 +1145,7 @@ const renderRecompensas = () => {
 // Widget del saldo (con un "pop" cuando sube) + barra de puntos + catálogo.
 // En el tope (1000) la barra cambia a «👑 TUS PUNTOS Z: 1000 / 1000 (MÁXIMO ALCANZADO)» y aparece el aviso de gastar los puntos.
 const paintPuntosZ = animar => {
+  programarAvisos();                                                                  // el saldo cambió: la campanita se entera
   const b = $('zBalance'), max = puntosZ >= TOPE_Z;
   b.textContent = String(puntosZ);
   if (animar) { b.classList.remove('z-pop'); void b.offsetWidth; b.classList.add('z-pop'); }
@@ -1310,16 +1315,16 @@ const paintFavorites = () => {
 const formatDate = ts => { try { return ts.toDate().toLocaleString('es-UY', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }); } catch (e) { return ''; } };
 const STAR_PATH = 'M12 2.6l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.5l-5.9 3.1 1.2-6.5L2.5 9.5l6.6-.9L12 2.6z';   // la misma estrella ⭐ del menú
 const historyItem = o => {
-  const fav = o.fav === true, fecha = formatDate(o.createdAt);
+  const fav = o.fav === true, fecha = formatDate(o.createdAt), oid = escHtml(o.id);          // nombres e ids vienen de la base: se escapan antes de entrar al HTML
   return `
   <div class="panel !p-3${fav ? ' pedido-fav' : ''}">
     <div class="flex items-start justify-between gap-2">
       <p class="text-xs text-muted">${fecha}</p>
-      <div class="flex shrink-0 items-center gap-1"><b class="text-fire">${money(o.total)}</b>
-        <button type="button" data-fav-pedido="${o.id}" aria-pressed="${fav}" aria-label="Pedido favorito${fecha ? ' del ' + fecha : ''}" title="${fav ? 'Es tu favorito (tocá para quitarlo)' : 'Marcar como favorito'}" class="fav-pedido"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${STAR_PATH}"/></svg></button></div>
+      <div class="flex shrink-0 items-center gap-1"><b class="text-fire">${money(Number(o.total) || 0)}</b>
+        <button type="button" data-fav-pedido="${oid}" aria-pressed="${fav}" aria-label="Pedido favorito${fecha ? ' del ' + fecha : ''}" title="${fav ? 'Es tu favorito (tocá para quitarlo)' : 'Marcar como favorito'}" class="fav-pedido"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${STAR_PATH}"/></svg></button></div>
     </div>
-    <p class="mt-1 text-sm leading-snug text-ink">${(o.items || []).map(it => `${it.q}× ${it.n}`).join(', ')}</p>
-    <button type="button" data-repeat="${o.id}" class="btn-ghost mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg text-xs">${ico('rotate-right')} Repetir pedido</button>
+    <p class="mt-1 text-sm leading-snug text-ink">${(o.items || []).map(it => `${escHtml(it.q)}× ${escHtml(it.n)}`).join(', ')}</p>
+    <button type="button" data-repeat="${oid}" class="btn-ghost mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg text-xs">${ico('rotate-right')} Repetir pedido</button>
   </div>`;
 };
 // Orden: los pedidos favoritos (⭐) van fijados arriba y después el resto; dentro de cada grupo, del más nuevo al más viejo.
@@ -1330,6 +1335,7 @@ const ordenHistorial = () => {
 // Se muestran los primeros `histVisibles` pedidos de ese orden (los favoritos y después los más nuevos); si quedan más, aparece «Ver más» con un contador.
 // Las misiones siguen leyendo TODOS los pedidos que trae la cuenta (userOrders), no solo los que se ven acá.
 const renderHistory = () => {
+  programarAvisos();                                                                  // pedidos / favoritos cambiaron: la campanita se entera
   const lista = ordenHistorial(), total = lista.length, n = Math.min(histVisibles, total);
   $('orderHistory').innerHTML = total ? lista.slice(0, n).map(historyItem).join('')
     : `<p class="py-4 text-center text-sm text-muted">Todavía no hiciste ningún pedido.</p>`;
@@ -1415,6 +1421,7 @@ const loadProfile = async () => {
     favoriteBurger = FAV_ITEMS.some(x => x.n === d.favoriteBurger) ? d.favoriteBurger : '';
     paymentMethod = PAY_METHODS.includes(d.paymentMethod) ? d.paymentMethod : '';
     kitchenNotes = typeof d.kitchenNotes === 'string' ? d.kitchenNotes : '';
+    perfilListo = true;                                                 // ya hay saldo y misiones de verdad: los avisos personales se pueden armar
   }
   if (orders) userOrders = mezclarPedidos(orders, favs);
   paintProfile();
@@ -1454,6 +1461,257 @@ const repeatOrder = id => {
   renderCart(); closeAuth(); setCart(true);
   toast(skipped ? 'Sumamos ese pedido (sin los canjes de Puntos Z)' : 'Sumamos ese pedido a tu carrito');
 };
+
+/* ══════════════════════════════ AVISOS · LA CAMPANITA 🔔 ════════════════════════════════════════════════
+   La campanita de la barra superior cuenta los avisos SIN LEER y abre un panel lateral (como el del carrito) con la lista.
+   Los avisos no vienen de ningún servidor: se ARMAN solos, cada vez, mirando el estado de la cuenta (Puntos Z, misiones, pedido favorito) y el día
+   (hora de Montevideo). Cada regla de AVISOS_REGLAS recibe ese estado (`c`) y devuelve nada, un aviso o varios:
+        { id, orden, icono, etiqueta, titulo, texto, accion? }
+     · id        identifica ESA aparición del aviso. Lo leído y lo borrado se recuerda por id: `martes:${semana}:${día}` es uno nuevo por día y
+                 `fav:${pedido}:${semana}` uno nuevo por semana (el de la semana pasada ya no suma al contador; el de esta sí aparece).
+     · orden     prioridad en la lista (menor = más arriba)
+     · icono     nombre del ícono del sprite (icons.json) · etiqueta: rótulo chico sobre el título
+     · accion    { tipo, texto, dato? } → botón del aviso; `tipo` es una clave de AVISO_ACCIONES
+   ➕ Para sumar un aviso nuevo (una promo, un evento…): UNA entrada más en AVISOS_REGLAS. El contador, el panel y lo de leído / borrado ya andan solos.
+   💾 Lo leído y lo borrado se guarda en ESTE dispositivo (localStorage `z18_avisos_<uid>`; sin sesión, `z18_avisos_anon`): una clave por cuenta, para no mezclarlas.
+   🎨 Los colores de la campanita son variables CSS (--campana-*, en styles.css): un evento (Halloween…) las redefine en html[data-evento="…"]. */
+const AVISOS_MAX_MARCAS = 300;                                         // cuántas marcas (leídas / borradas) se recuerdan por cuenta; si hay más, se olvidan las más viejas
+const DIA_MS = 86400000, DIA = { lun: 0, mar: 1, mie: 2, jue: 3, vie: 4, sab: 5, dom: 6 };
+const diaDeSemana = ms => Math.floor((ms - lunesDe(semanaDe(ms))) / DIA_MS);   // 0 = lunes … 6 = domingo, en hora de Montevideo (no depende de la zona del celular)
+const unirLista = (a, y = 'y') => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} ${y} ${a[a.length - 1]}`);   // ['A', 'B', 'C'] → «A, B y C»
+const ptsLargo = etiqueta => String(etiqueta).replace(/PTS/i, 'Puntos Z');                 // '+10 PTS' → '+10 Puntos Z'
+const mision = id => MISIONES.find(m => m.id === id);
+const resumenPedido = (o, max = 3) => {                                // «2× Z18 Original, 1× Papas fritas y 1 más»
+  const it = normalizarPedido(o).items.filter(x => x.q > 0), txt = it.slice(0, max).map(x => `${x.q}× ${x.n}`).join(', ');
+  return it.length > max ? `${txt} y ${it.length - max} más` : txt;
+};
+
+// Estado que miran las reglas. Los avisos personales esperan a que lleguen los datos de la cuenta (`listo`): con los de fábrica (0 puntos, sin misiones)
+// saldrían avisos falsos que después desaparecerían.
+const armarContextoAvisos = ahora => {
+  const cuenta = !!(user && user.uid);
+  const c = { ahora, sem: semanaDe(ahora), dia: diaDeSemana(ahora), cuenta, listo: !cuenta || perfilListo, puntos: puntosZ, auto: [], favorito: null };
+  if (cuenta && c.listo) {
+    c.auto = MISIONES_AUTO.map(m => ({ m, e: estadoMision(m) }));
+    const f = ordenHistorial()[0]; c.favorito = f && f.fav === true ? f : null;          // el favorito más nuevo (ordenHistorial deja los ⭐ arriba)
+  }
+  return c;
+};
+
+const AVISOS_REGLAS = [
+  // 1 · Una misión de «1 vez por cuenta» ya se cumplió y falta reclamarla
+  c => c.auto.filter(x => x.e.estado === 'lista').map(({ m }) => ({
+    id: `lista:${m.id}`, orden: 10, icono: 'trophy', etiqueta: 'Misión cumplida', titulo: `¡Completaste ${m.nombre}!`,
+    texto: `Reclamá tus +${m.puntos} Puntos Z en Mi cuenta.`, accion: { tipo: 'misiones', texto: 'Reclamar' } })),
+
+  // 2 · Rescate de Martes: martes y miércoles (con sesión, mientras no la haya cobrado esta semana)
+  c => {
+    if (c.dia !== DIA.mar && c.dia !== DIA.mie) return null;
+    const m = mision('rescateMartes'); if (!m) return null;
+    if (c.cuenta && (!c.listo || semanalHecha(m))) return null;
+    const martes = c.dia === DIA.mar, pts = ptsLargo(m.etiqueta);
+    return {
+      id: `martes:${c.sem}:${c.dia}`, orden: 20, icono: m.icono, etiqueta: 'Misión del día',
+      titulo: martes ? `¡Hoy es Martes de ${m.etiqueta}!` : 'Último día de Rescate de Martes',
+      texto: c.cuenta
+        ? (martes ? `Hacé tu pedido hoy o mañana y ganá ${pts}. Pedí tu código por WhatsApp.` : `Hoy es la última chance de la semana: hacé tu pedido y ganá ${pts}. Pedí tu código por WhatsApp.`)
+        : (martes ? `Iniciá sesión y hacé tu pedido hoy o mañana para ganar ${pts}.` : `Iniciá sesión y hacé tu pedido hoy para ganar ${pts}.`),
+      accion: c.cuenta ? { tipo: 'misiones', texto: 'Ver misión' } : { tipo: 'login', texto: 'Iniciar sesión' } };
+  },
+
+  // 3 · Puntos Z: máximo, recompensas que ya alcanzan, cuánto falta para la primera, cómo empezar (o, sin cuenta, crear una)
+  c => {
+    if (!c.cuenta) return { id: 'puntos:anon', orden: 70, icono: 'coins', etiqueta: 'Puntos Z', titulo: 'Creá tu cuenta y sumá Puntos Z',
+      texto: `Cada $${PESOS_POR_PUNTO_Z} de compra = 1 Punto Z. Después los canjeás por bebidas, papas, pizzetas y hamburguesas.`, accion: { tipo: 'registro', texto: 'Crear cuenta' } };
+    if (!c.listo) return null;
+    const p = c.puntos, alcanzan = RECOMPENSAS_Z.filter(r => r.cost <= p).length, min = Math.min(...RECOMPENSAS_Z.map(r => r.cost));
+    if (p >= TOPE_Z) return { id: 'puntos:tope', orden: 30, icono: 'crown', etiqueta: 'Puntos Z', titulo: '¡Llegaste al máximo de Puntos Z!',
+      texto: `Tenés ${ptsTxt(p)} y no se pueden acumular más. Canjeá una recompensa en Mi cuenta.`, accion: { tipo: 'recompensas', texto: 'Ver recompensas' } };
+    if (alcanzan) return { id: `puntos:canje:${alcanzan}`, orden: 30, icono: 'gift', etiqueta: 'Puntos Z',
+      titulo: alcanzan === 1 ? '¡Ya podés canjear una recompensa!' : `¡Ya podés canjear ${alcanzan} recompensas!`,
+      texto: `Tenés ${ptsTxt(p)}. Elegí la tuya en Mi cuenta.`, accion: { tipo: 'recompensas', texto: 'Ver recompensas' } };
+    if (p > 0) return { id: 'puntos:faltan', orden: 70, icono: 'coins', etiqueta: 'Puntos Z', titulo: `Te faltan ${ptsTxt(min - p)} para tu primera recompensa`,
+      texto: `Tenés ${ptsTxt(p)}. Con ${min} ya podés canjear ${unirLista(RECOMPENSAS_Z.filter(r => r.cost === min).map(r => r.name), 'o')}.`, accion: { tipo: 'puntos', texto: 'Ver mis puntos' } };
+    return { id: 'puntos:cero', orden: 70, icono: 'coins', etiqueta: 'Puntos Z', titulo: 'Empezá a sumar Puntos Z',
+      texto: `Cada $${PESOS_POR_PUNTO_Z} de compra = 1 Punto Z. Al hacer tu pedido, pedí tu código por WhatsApp y canjealo en Mi cuenta.`, accion: { tipo: 'puntos', texto: 'Ver mis puntos' } };
+  },
+
+  // 4 · Pedido favorito (⭐ del historial): recordatorio semanal para repetirlo con un toque
+  c => {
+    if (!c.favorito) return null;
+    const r = resumenPedido(c.favorito);
+    return { id: `fav:${c.favorito.id}:${c.sem}`, orden: 40, icono: 'star', etiqueta: 'Tu favorito', titulo: 'Tu pedido favorito te espera',
+      texto: r ? `${r}. Repetilo con un toque.` : 'Repetilo con un toque.', accion: { tipo: 'repetir', texto: 'Repetir pedido', dato: c.favorito.id } };
+  },
+
+  // 5 · Lunes: las misiones semanales se renovaron
+  c => {
+    if (!c.cuenta || !c.listo || c.dia !== DIA.lun) return null;
+    const pend = MISIONES_SEM.filter(m => !semanalHecha(m)); if (!pend.length) return null;
+    return { id: `semana:${c.sem}`, orden: 50, icono: 'bolt', etiqueta: 'Nueva semana', titulo: '¡Nueva semana, nuevas misiones!',
+      texto: `Se renovaron ${unirLista(pend.map(m => `${m.nombre} (${m.etiqueta})`))}. Pedí por WhatsApp y reclamá tu código.`, accion: { tipo: 'misiones', texto: 'Ver misiones' } };
+  },
+
+  // 6 · Combo Completo: de viernes a domingo, si todavía no la cobró esta semana
+  c => {
+    if (!c.cuenta || !c.listo || c.dia < DIA.vie) return null;
+    const m = mision('comboCompleto'); if (!m || semanalHecha(m)) return null;
+    return { id: `combo:${c.sem}`, orden: 55, icono: m.icono, etiqueta: 'Misión semanal', titulo: `Esta semana: ${m.nombre}`,
+      texto: `${m.req} Ganás ${ptsLargo(m.etiqueta)}.`, accion: { tipo: 'misiones', texto: 'Ver misión' } };
+  },
+
+  // 7 · Misiones de «1 vez por cuenta» que todavía no se cumplen
+  c => c.auto.filter(x => x.e.estado === 'pend').map(({ m }) => ({
+    id: `mision:${m.id}`, orden: 60, icono: m.icono, etiqueta: 'Misión', titulo: m.nombre, texto: `${m.req} Ganás +${m.puntos} Puntos Z.`, accion: { tipo: 'misiones', texto: 'Ver misión' } }))
+];
+
+// Lo leído y lo borrado: { leidas: { id: instante }, borradas: { id: instante } } por cuenta. Objetos sin prototipo: un id raro nunca pisa nada del lenguaje.
+let avisosMem = {};                                                    // copia en memoria (si el navegador no deja usar localStorage, p. ej. en modo privado, igual se recuerda mientras la página siga abierta)
+const sinProto = o => Object.assign(Object.create(null), o);
+const avisosClave = () => 'z18_avisos_' + (user && user.uid ? user.uid : 'anon');
+const marcasValidas = o => sinProto(Object.fromEntries(Object.entries(o && typeof o === 'object' && !Array.isArray(o) ? o : {}).filter(([k, v]) => k.length <= 160 && Number.isFinite(v))));
+const avisosMarcas = () => {
+  const k = avisosClave();
+  if (!avisosMem[k]) {
+    let raw = null; try { raw = JSON.parse(localStorage.getItem(k)); } catch (e) {}
+    avisosMem[k] = { leidas: marcasValidas(raw && raw.leidas), borradas: marcasValidas(raw && raw.borradas) };
+  }
+  return avisosMem[k];
+};
+const guardarMarcas = () => {
+  const m = avisosMarcas();
+  ['leidas', 'borradas'].forEach(t => {                                // demasiadas: se olvidan las más viejas
+    const e = Object.entries(m[t]); if (e.length > AVISOS_MAX_MARCAS) m[t] = sinProto(Object.fromEntries(e.sort((a, b) => b[1] - a[1]).slice(0, AVISOS_MAX_MARCAS)));
+  });
+  try { localStorage.setItem(avisosClave(), JSON.stringify({ v: 1, leidas: m.leidas, borradas: m.borradas })); } catch (e) {}
+};
+
+// Corre todas las reglas (una que falle no apaga la campanita), descarta lo borrado y marca lo leído
+const calcularAvisos = ahora => {
+  const c = armarContextoAvisos(ahora), m = avisosMarcas(), vistos = new Set(), out = [];
+  AVISOS_REGLAS.forEach(regla => {
+    let r = null; try { r = regla(c); } catch (e) { console.error('[Z18] Una regla de avisos falló:', e); }
+    [].concat(r || []).forEach(a => {
+      if (!a || !a.id || vistos.has(a.id) || m.borradas[a.id]) return;
+      vistos.add(a.id); out.push({ ...a, leido: !!m.leidas[a.id] });
+    });
+  });
+  return out.sort((a, b) => (a.orden || 99) - (b.orden || 99));
+};
+
+let avisos = [], avisosPend = false, avisosSinLeer = null, avisosTimer = null;
+const sinLeer = () => avisos.filter(a => !a.leido).length;
+const avisosAbiertos = () => !$('avisos').inert;
+
+// Botón de la barra: contador (9+ si son más), borde de color mientras haya algo nuevo y un «campanazo» cuando llega un aviso nuevo
+const pintarCampanita = () => {
+  const n = sinLeer(), btn = $('bellBtn'), badge = $('bellBadge');
+  badge.textContent = n > 9 ? '9+' : String(n); badge.hidden = n === 0;
+  btn.classList.toggle('tiene-avisos', n > 0);
+  btn.setAttribute('aria-label', n ? `Avisos, ${n} sin leer` : 'Avisos');
+  if (avisosSinLeer !== null && n > avisosSinLeer && !avisosAbiertos()) { btn.classList.remove('campana-ring'); void btn.offsetWidth; btn.classList.add('campana-ring'); }
+  avisosSinLeer = n;
+};
+
+// Un aviso del panel. Todo lo que no es nuestro se escapa. Sin leer: el cuerpo es un botón (tocarlo lo marca leído); leído: texto quieto.
+const avisoItem = a => {
+  const sin = !a.leido, ac = a.accion, id = escHtml(a.id);
+  const cuerpo = `<span class="aviso-tag">${escHtml(a.etiqueta || '')}</span><span class="aviso-titulo">${escHtml(a.titulo)}</span><span class="aviso-texto">${escHtml(a.texto)}</span>`;
+  return `
+  <li class="aviso${sin ? ' aviso-nuevo' : ''}" data-aviso="${id}">
+    <span class="aviso-ico" aria-hidden="true">${ico(a.icono || 'bell')}</span>
+    <div class="min-w-0 flex-1">
+      ${sin ? `<button type="button" class="aviso-cuerpo" data-aviso-leer="${id}"><span class="sr-only">Sin leer. </span>${cuerpo}</button>` : `<div class="aviso-cuerpo">${cuerpo}</div>`}
+      ${ac ? `<button type="button" class="btn-fire aviso-accion" data-aviso-accion="${escHtml(ac.tipo)}" data-aviso-id="${id}"${ac.dato ? ` data-aviso-dato="${escHtml(ac.dato)}"` : ''}>${escHtml(ac.texto)}</button>` : ''}
+    </div>
+  </li>`;
+};
+const renderAvisos = () => {
+  const n = sinLeer(), hay = avisos.length > 0, cargando = !!(user && user.uid) && !perfilListo;
+  $('avisosResumen').textContent = cargando ? 'Cargando tu cuenta…' : n ? `${n} sin leer` : hay ? 'Estás al día' : 'Sin avisos por ahora';
+  $('avisosLeerTodo').disabled = n === 0; $('avisosLimpiar').disabled = !hay;
+  $('avisosLista').innerHTML = hay ? avisos.map(avisoItem).join('') : `
+    <li class="aviso-vacio">${ico('check-double', 'text-3xl text-gold')}
+      <p class="mt-3 font-display text-2xl tracking-wide">${cargando ? 'Cargando tus avisos…' : 'Estás al día'}</p>
+      <p class="mt-1 text-xs leading-relaxed text-muted">${cargando ? 'Un segundo, estamos trayendo los datos de tu cuenta.' : 'No hay avisos por ahora. Cuando haya misiones, Puntos Z o novedades de tu pedido favorito, aparecen acá.'}</p>
+    </li>`;
+  if (avisosAbiertos() && document.activeElement === document.body) $('avisosClose').focus();   // el repintado se llevó el botón que tenía el foco
+};
+
+// Recalcula todo (y, si el panel está abierto, lo repinta). `programarAvisos` junta varios pedidos seguidos en uno solo: se llama desde los pintores de
+// Puntos Z, misiones, historial y cuenta, así que la campanita nunca queda desactualizada, venga el cambio de donde venga.
+const refrescarAvisos = () => {
+  const ahora = Date.now();
+  try { avisos = calcularAvisos(ahora); } catch (e) { console.error('[Z18] No se pudieron armar los avisos:', e); avisos = []; }
+  pintarCampanita();
+  if (avisosAbiertos()) renderAvisos();
+  clearTimeout(avisosTimer);                                           // a la medianoche de Montevideo cambia el día (el aviso del martes pasa al del miércoles, etc.)
+  const falta = lunesDe(semanaDe(ahora)) + (diaDeSemana(ahora) + 1) * DIA_MS - ahora;
+  avisosTimer = setTimeout(programarAvisos, Math.min(Math.max(falta, 0) + 1000, 2147483647));
+};
+const programarAvisos = () => { if (avisosPend) return; avisosPend = true; queueMicrotask(() => { avisosPend = false; refrescarAvisos(); }); };
+document.addEventListener('visibilitychange', () => { if (!document.hidden) programarAvisos(); });   // al volver a la pestaña (o despertar el celular) puede haber cambiado el día
+
+// Marcar: `leidas` (baja el contador) o `borradas` (sale de la lista). Es por id: la próxima aparición (otro día, otra semana) vuelve a ser nueva.
+const marcarAvisos = (tipo, ids) => { const m = avisosMarcas(), t = Date.now(); ids.forEach(id => { m[tipo][id] = t; }); guardarMarcas(); refrescarAvisos(); };
+
+// Abrir / cerrar el panel: igual que el carrito (el resto de la página queda inerte mientras está abierto)
+const abrirAvisos = () => {
+  if (avisosAbiertos()) return;
+  refrescarAvisos();
+  $('avisos').classList.remove('translate-x-full'); $('avisos').inert = false; $('avisosOverlay').classList.remove('hidden');
+  $('bellBtn').setAttribute('aria-expanded', 'true');
+  lock(true); document.body.style.overflow = 'hidden';
+  renderAvisos(); $('avisosClose').focus();
+};
+const cerrarAvisos = () => {
+  if (!avisosAbiertos()) return;
+  $('avisos').classList.add('translate-x-full'); $('avisos').inert = true; $('avisosOverlay').classList.add('hidden');
+  $('bellBtn').setAttribute('aria-expanded', 'false');
+  lock(false); document.body.style.overflow = '';
+  $('bellBtn').focus();
+};
+
+// Botón de un aviso: lleva a la parte de la web que corresponde. `dato` viaja en data-aviso-dato (ej. el id del pedido a repetir).
+const irACuenta = seccion => {                                         // abre «Mi cuenta» y baja hasta esa parte
+  openAuth('account');
+  requestAnimationFrame(() => { const el = $(seccion); if (el) el.scrollIntoView({ block: 'start' }); });
+};
+const AVISO_ACCIONES = {
+  login:       () => openAuth('login'),
+  registro:    () => openAuth('register'),
+  misiones:    () => irACuenta('misionesZ'),
+  puntos:      () => irACuenta('puntosZ'),
+  recompensas: () => irACuenta('zRewardsBox'),
+  repetir:     id => repeatOrder(id)                                   // suma el pedido al carrito y lo abre (cierra «Mi cuenta» si estaba abierta)
+};
+const ejecutarAviso = btn => {
+  const { avisoAccion: tipo, avisoId: id, avisoDato: dato } = btn.dataset;
+  marcarAvisos('leidas', [id]);                                        // tocar el botón de un aviso también lo da por leído
+  cerrarAvisos();
+  if (Object.prototype.hasOwnProperty.call(AVISO_ACCIONES, tipo)) AVISO_ACCIONES[tipo](dato);
+};
+const leerAviso = id => {
+  marcarAvisos('leidas', [id]);
+  const li = [...document.querySelectorAll('#avisosLista [data-aviso]')].find(x => x.dataset.aviso === id);
+  const f = (li && li.querySelector('[data-aviso-accion]')) || document.querySelector('#avisosLista [data-aviso-leer]') || $('avisosClose');   // el botón que se tocó ya no existe: el foco sigue en el mismo aviso o pasa al próximo sin leer
+  f.focus({ preventScroll: true });
+};
+
+$('bellBtn').onclick = abrirAvisos;
+$('avisosClose').onclick = $('avisosOverlay').onclick = cerrarAvisos;
+$('avisosLeerTodo').onclick = () => {
+  vibrate(); marcarAvisos('leidas', avisos.map(a => a.id));
+  ($('avisosLimpiar').disabled ? $('avisosClose') : $('avisosLimpiar')).focus();                  // el botón que se apagó no puede quedarse con el foco
+};
+$('avisosLimpiar').onclick = () => { vibrate(); marcarAvisos('borradas', avisos.map(a => a.id)); $('avisosClose').focus(); };
+$('avisosLista').addEventListener('click', e => {
+  const ac = e.target.closest('[data-aviso-accion]');
+  if (ac) { vibrate(); ejecutarAviso(ac); return; }
+  const le = e.target.closest('[data-aviso-leer]');
+  if (le) { vibrate(); leerAviso(le.dataset.avisoLeer); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && avisosAbiertos()) cerrarAvisos(); });
 
 document.addEventListener('click', e => {
   const mb = e.target.closest('[data-mision]');                           // CANJEAR en una misión → modal de confirmación
@@ -1507,6 +1765,7 @@ if (user && user.uid) loadProfile();                                    // visit
 
 const signIn = u => {
   user = { name: String(u.name || u.email || 'Cliente Z18').slice(0, 60), email: u.email || '', phone: u.phone || '', avatar: u.avatar || '', uid: u.uid || '', esLeyenda: false };
+  perfilListo = false;                                  // la cuenta recién entró: sus datos todavía no llegaron
   saveSession();
   paintUser(); closeAuth(); toast(`¡Hola, ${user.name}!`);
   loadProfile();                                        // trae favorita, preferencias e historial (y pinta las estrellas del menú)
@@ -1518,7 +1777,7 @@ $('authBack').onclick = () => $('auth').dataset.view === 'register' ? show('logi
 $('logout').onclick = () => {
   user = null; try { localStorage.removeItem('z18_session'); } catch (e) {}
   loadFirebase().then(f => f.signOut(f.auth)).catch(() => {});   // correo, Google o Facebook: las 3 cierran sesión en Firebase
-  puntosZ = lifetimeZ = 0; bono500Z = false; misionesZ = {}; semBorrador = {}; semMsg = {}; semEnCurso = {}; semVista = null; clearTimeout(lunesTimer); canjeArmado = null; msgCodigoZ(''); $('zCode').value = ''; favoriteBurger = paymentMethod = kitchenNotes = ''; userOrders = []; favEnVuelo.clear(); histVisibles = HIST_INICIAL; prefsDirty = false; setPrefsMsg('');   // que la próxima cuenta no vea estos datos
+  puntosZ = lifetimeZ = 0; bono500Z = false; misionesZ = {}; semBorrador = {}; semMsg = {}; semEnCurso = {}; semVista = null; clearTimeout(lunesTimer); canjeArmado = null; msgCodigoZ(''); $('zCode').value = ''; favoriteBurger = paymentMethod = kitchenNotes = ''; userOrders = []; favEnVuelo.clear(); histVisibles = HIST_INICIAL; prefsDirty = false; perfilListo = false; setPrefsMsg('');   // que la próxima cuenta no vea estos datos
   paintProfile();
   paintUser(); closeAuth(); toast('Sesión cerrada');
 };
