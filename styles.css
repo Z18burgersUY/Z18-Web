@@ -3,6 +3,24 @@
   --z-card: #161820; --z-input: #0e1014; --z-chip: #1f222e;
   --z-border: #27272a; --z-hairline: #3f4454;
   --z-ink: #ffffff; --z-muted: #e2e8f0; --z-muted2: #94a3b8;
+
+  /* Acentos de marca como canales RGB («255 85 0»): se usan como rgb(var(--z-fire)) o rgb(var(--z-fire) / .4), y Tailwind los lee para fire y gold
+     (ver tailwind.config en index.html). Un evento temático (Halloween, Navidad…) solo tiene que redefinirlos en html[data-evento="…"]. */
+  --z-fire: 255 85 0;        /* naranja de marca: íconos, precios, bordes al pasar el mouse */
+  --z-fire-deep: 217 56 0;   /* naranja oscuro: etiqueta de promo y final del degradé de los botones */
+  --z-gold: 255 183 0;       /* dorado: subtítulos, enlaces, anillo de foco, puntos, misiones */
+  --z-gold-hi: 255 224 138;  /* dorado claro: marco del avatar Leyenda */
+  --z-amber: 255 122 0;      /* ámbar: extremo de la barra de Puntos Z */
+  --z-star: 255 183 0;       /* estrella de favoritos (sobre fondo oscuro) */
+  --z-on-fire: 255 255 255;  /* texto e íconos sobre los botones naranja */
+  --z-btn-a: var(--z-fire);       /* degradé del botón principal (.btn-fire) y del enlace destacado del menú */
+  --z-btn-b: var(--z-fire-deep);
+  --z-glow-a: 255 120 0;     /* resplandores: máximo de Puntos Z y botón de cuenta Leyenda */
+  --z-glow-b: 255 150 0;     /* …misión lista e insignia Leyenda */
+  --z-glow-c: 255 140 0;     /* …marco del avatar Leyenda */
+  /* variantes legibles sobre fondo CLARO (solo las usa el modo claro) */
+  --z-gold-ink: 180 83 9; --z-gold-line: 217 119 6; --z-gold-deep: 154 74 6;
+  --z-star-ink: 180 83 9; --z-star-line: 217 119 6;
 }
 [data-theme="light"] {
   --z-bg: #f7f4ef; --z-bg2: #ffffff; --z-hero1: #fff1e6;
@@ -18,28 +36,29 @@ body {
 }
 [data-theme="light"] body { background-image: linear-gradient(180deg, var(--z-bg2), var(--z-bg) 60%); }
 main section { scroll-margin-top: 5rem; }
-a:focus-visible { outline: 2px solid #ffb700; outline-offset: 2px; }
+a:focus-visible { outline: 2px solid rgb(var(--z-gold)); outline-offset: 2px; }
 .no-scrollbar { scrollbar-width: none; } .no-scrollbar::-webkit-scrollbar { display: none; }
 
 /* Resplandor de fuego alrededor del logo (sigue el contorno circular) */
-.glow-logo { filter: drop-shadow(0 0 25px rgba(255, 85, 0, .35)); }
-.glow-text { text-shadow: 0 0 14px rgba(255, 85, 0, .5); }
+.glow-logo { filter: drop-shadow(0 0 25px rgb(var(--z-fire) / .35)); }
+.glow-text { text-shadow: 0 0 14px rgb(var(--z-fire) / .5); }
 
 /* Tarjetas y paneles */
 .menu-card { background-color: var(--z-card); border: 1px solid var(--z-border); transition: border-color .2s, box-shadow .2s; }
-.menu-card:hover { border-color: #ff5500; box-shadow: 0 10px 25px -8px rgba(255, 85, 0, .4); }
+.menu-card:hover { border-color: rgb(var(--z-fire)); box-shadow: 0 10px 25px -8px rgb(var(--z-fire) / .4); }
 .panel { background-color: var(--z-card); border: 1px solid var(--z-border); border-radius: 1rem; padding: 1.25rem; }
-.price-tag { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; line-height: 1; color: #ff5500; flex-shrink: 0; }
-.sub { font-family: 'Bebas Neue', sans-serif; font-size: 1.75rem; letter-spacing: .04em; color: #ffb700; }
-.tag { position: absolute; top: .75rem; right: .75rem; z-index: 2; white-space: nowrap; background: #d93800; color: #fff; padding: .1rem .8rem; border-radius: .4rem;
+.price-tag { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; line-height: 1; color: rgb(var(--z-fire)); flex-shrink: 0; }
+.price-tag.cerrado { color: var(--z-muted2); }   /* «Cerrado» del bloque de horarios: apagado, no es una hora */
+.sub { font-family: 'Bebas Neue', sans-serif; font-size: 1.75rem; letter-spacing: .04em; color: rgb(var(--z-gold)); }
+.tag { position: absolute; top: .75rem; right: .75rem; z-index: 2; white-space: nowrap; background: rgb(var(--z-fire-deep)); color: #fff; padding: .1rem .8rem; border-radius: .4rem;
        font: 1.4rem/1.3 'Bebas Neue', sans-serif; letter-spacing: .06em; box-shadow: 0 4px 14px rgba(0, 0, 0, .55); }
 .chip { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .8rem; border-radius: 9999px; background: var(--z-chip);
         border: 1px solid var(--z-hairline); color: var(--z-ink); font-size: .8rem; font-weight: 600; }
 
 /* Botones táctiles (mín. 44 px de alto) */
-.btn-fire { background: linear-gradient(135deg, #ff5500, #d93800); color: #fff; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
-            box-shadow: 0 4px 18px rgba(255, 85, 0, .4); transition: transform .15s, box-shadow .15s; }
-.btn-fire:hover { box-shadow: 0 6px 22px rgba(255, 85, 0, .65); }
+.btn-fire { background: linear-gradient(135deg, rgb(var(--z-btn-a)), rgb(var(--z-btn-b))); color: rgb(var(--z-on-fire)); font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+            box-shadow: 0 4px 18px rgb(var(--z-btn-a) / .4); transition: transform .15s, box-shadow .15s; }
+.btn-fire:hover { box-shadow: 0 6px 22px rgb(var(--z-btn-a) / .65); }
 .btn-fire:active, .btn-wa:active { transform: scale(.96); }
 .btn-wa { background: #25d366; color: #000; transition: transform .15s; }
 
@@ -55,15 +74,15 @@ a:focus-visible { outline: 2px solid #ffb700; outline-offset: 2px; }
 
 /* Métodos de pago: en celular una fila por método; desde 640 px, tres columnas centradas */
 .pay { display: flex; align-items: center; gap: .75rem; padding: .8rem 1rem; border: 1px solid var(--z-border); border-radius: .75rem; background: var(--z-input); font-weight: 700; }
-.pay i, .pay svg { flex-shrink: 0; width: 1.5rem; font-size: 1.5rem; color: #ff5500; }
+.pay i, .pay svg { flex-shrink: 0; width: 1.5rem; font-size: 1.5rem; color: rgb(var(--z-fire)); }
 @media (min-width: 640px) { .pay { flex-direction: column; gap: .5rem; padding: 1rem .5rem; text-align: center; } }
 
 /* Navegación */
 .nl { display: inline-flex; align-items: center; gap: .4rem; min-height: 2.75rem; padding: 0 1rem; white-space: nowrap; border-radius: .75rem;
       font-size: .78rem; font-weight: 700; background: var(--z-card); color: var(--z-muted); border: 1px solid var(--z-border); transition: border-color .2s, color .2s; }
-.nl:hover, .nl.on { border-color: #ff5500; color: var(--z-ink); }
-.nl.on { box-shadow: inset 0 0 0 1px #ff5500; }
-.nl-hot { background: #ff5500; border-color: #ff5500; color: #fff; }
+.nl:hover, .nl.on { border-color: rgb(var(--z-fire)); color: var(--z-ink); }
+.nl.on { box-shadow: inset 0 0 0 1px rgb(var(--z-fire)); }
+.nl-hot { background: rgb(var(--z-btn-a)); border-color: rgb(var(--z-btn-a)); color: rgb(var(--z-on-fire)); }
 
 /* Brasas del header: el único movimiento decorativo */
 .ember { position: absolute; bottom: -10px; width: var(--s); height: var(--s); border-radius: 50%; background: #ff7a2f; opacity: 0; pointer-events: none;
@@ -74,50 +93,54 @@ a:focus-visible { outline: 2px solid #ffb700; outline-offset: 2px; }
 .inp { width: 100%; min-height: 3rem; padding: .7rem 1rem; border: 1px solid var(--z-hairline); border-radius: .75rem; background: var(--z-input); color: var(--z-ink); font-size: 16px; }
 .inp-pw { padding-right: 3rem; }
 .inp::placeholder { color: #94a3b8; }
-.inp:focus { outline: 2px solid #ffb700; outline-offset: 1px; border-color: #ffb700; }
+.inp:focus { outline: 2px solid rgb(var(--z-gold)); outline-offset: 1px; border-color: rgb(var(--z-gold)); }
 .inp[aria-invalid="true"] { border-color: #ff8a80; }
 .err { min-height: 1.1rem; margin-top: .35rem; font-size: .8rem; font-weight: 600; color: #ff8a80; }
 .err.ok { color: #4ade80; }
 .ferr { min-height: 0; margin-top: 0; }
-.lnk { color: #ffb700; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.lnk { color: rgb(var(--z-gold)); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .soc { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .25rem; min-height: 3.5rem; border: 1px solid transparent; border-radius: .75rem;
        font-size: .75rem; font-weight: 700; transition: transform .15s; }
 .soc:active { transform: scale(.96); }
 .soc:disabled { opacity: .55; cursor: progress; transform: none; }
-[data-theme="light"] #auth .lnk { color: #b45309; }
+[data-theme="light"] #auth .lnk { color: rgb(var(--z-gold-ink)); }
 /* Estrella ⭐ de favoritos en las tarjetas de hamburguesa */
 .menu-card.has-fav { position: relative; }
 .fav-star { position: absolute; top: .75rem; left: .75rem; z-index: 3; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 9999px;
             background: rgba(0, 0, 0, .55); color: rgba(255, 255, 255, .9); border: 1px solid rgba(255, 255, 255, .18); backdrop-filter: blur(4px);
             transition: transform .15s, color .15s, background-color .15s; }
-.fav-star:hover { transform: scale(1.1); color: #ffb700; }
+.fav-star:hover { transform: scale(1.1); color: rgb(var(--z-star)); }
 .fav-star:active { transform: scale(.94); }
-.fav-star:focus-visible { outline: 2px solid #ffb700; outline-offset: 2px; }
+.fav-star:focus-visible { outline: 2px solid rgb(var(--z-gold)); outline-offset: 2px; }
 .fav-star svg { width: 1.5rem; height: 1.5rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
-.fav-star.is-fav { color: #ffb700; background: rgba(0, 0, 0, .72); border-color: #ffb700; }
+.fav-star.is-fav { color: rgb(var(--z-star)); background: rgba(0, 0, 0, .72); border-color: rgb(var(--z-star)); }
 .fav-star.is-fav svg { fill: currentColor; }
-.menu-card.is-fav-card { border-color: #ffb700 !important; box-shadow: 0 0 0 1px #ffb700, 0 12px 30px -10px rgba(255, 183, 0, .5); }
+.menu-card.is-fav-card { border-color: rgb(var(--z-star)) !important; box-shadow: 0 0 0 1px rgb(var(--z-star)), 0 12px 30px -10px rgb(var(--z-star) / .5); }
 @media (prefers-reduced-motion: reduce) { .fav-star { transition: none; } .fav-star:hover, .fav-star:active { transform: none; } }
 /* Pedidos favoritos ⭐ del historial (Mi cuenta): estrella de 44 px (se solapa con el margen de la tarjeta para no agrandarla), vacía al principio y dorada y llena
    cuando el pedido es favorito; la tarjeta favorita lleva borde dorado. */
 .fav-pedido { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin: -.65rem -.65rem -.65rem 0; border-radius: 9999px; color: var(--z-muted2);
               transition: transform .15s, color .15s; }
 .fav-pedido svg { width: 1.4rem; height: 1.4rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
-.fav-pedido:hover { color: #ffb700; transform: scale(1.1); }
+.fav-pedido:hover { color: rgb(var(--z-star)); transform: scale(1.1); }
 .fav-pedido:active { transform: scale(.92); }
-.fav-pedido:focus-visible { outline: 2px solid #ffb700; outline-offset: -2px; }
-.fav-pedido[aria-pressed="true"] { color: #ffb700; }
+.fav-pedido:focus-visible { outline: 2px solid rgb(var(--z-gold)); outline-offset: -2px; }
+.fav-pedido[aria-pressed="true"] { color: rgb(var(--z-star)); }
 .fav-pedido[aria-pressed="true"] svg { fill: currentColor; }
-.panel.pedido-fav { border-color: #ffb700; box-shadow: 0 0 0 1px rgba(255, 183, 0, .55), 0 10px 24px -14px rgba(255, 183, 0, .6); }
-[data-theme="light"] .fav-pedido:hover, [data-theme="light"] .fav-pedido[aria-pressed="true"] { color: #b45309; }
-[data-theme="light"] .fav-pedido:focus-visible { outline-color: #b45309; }
-[data-theme="light"] .panel.pedido-fav { border-color: #d97706; box-shadow: 0 0 0 1px rgba(217, 119, 6, .4), 0 10px 24px -14px rgba(217, 119, 6, .5); }
+.panel.pedido-fav { border-color: rgb(var(--z-star)); box-shadow: 0 0 0 1px rgb(var(--z-star) / .55), 0 10px 24px -14px rgb(var(--z-star) / .6); }
+[data-theme="light"] .fav-pedido:hover, [data-theme="light"] .fav-pedido[aria-pressed="true"] { color: rgb(var(--z-star-ink)); }
+[data-theme="light"] .fav-pedido:focus-visible { outline-color: rgb(var(--z-gold-ink)); }
+[data-theme="light"] .panel.pedido-fav { border-color: rgb(var(--z-star-line)); box-shadow: 0 0 0 1px rgb(var(--z-star-line) / .4), 0 10px 24px -14px rgb(var(--z-star-line) / .5); }
 @media (prefers-reduced-motion: reduce) { .fav-pedido { transition: none; } .fav-pedido:hover, .fav-pedido:active { transform: none; } }
 /* Contador de Puntos Z: pequeño "pop" cuando suma */
 @keyframes zpop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
 .z-pop { animation: zpop .6s ease; }
 @media (prefers-reduced-motion: reduce) { .z-pop { animation: none; } }
 .soc-g { background: #fff; color: #1f1f1f; border-color: #dadce0; } .soc-f { background: #1877f2; color: #fff; }
+/* Aviso breve («Agregado: …»): fondo negro en los dos modos, así que la letra va siempre blanca (en modo claro heredaba la tinta oscura y no se leía) */
+#toast { color: #fff; }
+/* Paneles laterales cerrados (carrito y avisos, fuera de pantalla): su sombra asomaba como una franja gris en el borde derecho de la página (se notaba en modo claro) */
+#cart[inert], #avisos[inert] { box-shadow: none; }
 .fade-in { animation: fadein .2s ease-out; }
 @keyframes fadein { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .fade-in { animation: none; } }
@@ -142,54 +165,54 @@ html { scroll-behavior: smooth; }
 
 /* Barra de Puntos Z (0 → 1000) y estado de MÁXIMO ALCANZADO */
 .z-meter { height: .6rem; max-width: 16rem; margin: .65rem auto 0; overflow: hidden; border-radius: 9999px; background: var(--z-chip); border: 1px solid var(--z-border); }
-.z-meter-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ffb700, #ff7a00); transition: width .5s ease; }
-.z-max-msg { margin-top: .5rem; font-size: .8rem; font-weight: 800; color: #ffb700; }
-#puntosZ.z-max { border-color: #ffb700; background-image: linear-gradient(180deg, rgba(255, 183, 0, .12), transparent 70%); box-shadow: 0 0 0 1px #ffb700, 0 10px 30px -12px rgba(255, 120, 0, .55); }
-#puntosZ.z-max #zLabel { color: #ffb700; font-size: .78rem; font-weight: 800; letter-spacing: .04em; }
-#puntosZ.z-max .z-meter-fill { background: linear-gradient(90deg, #ff5500, #ffb700, #ff5500); background-size: 200% 100%; animation: zshine 2.2s linear infinite; }
+.z-meter-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, rgb(var(--z-gold)), rgb(var(--z-amber))); transition: width .5s ease; }
+.z-max-msg { margin-top: .5rem; font-size: .8rem; font-weight: 800; color: rgb(var(--z-gold)); }
+#puntosZ.z-max { border-color: rgb(var(--z-gold)); background-image: linear-gradient(180deg, rgb(var(--z-gold) / .12), transparent 70%); box-shadow: 0 0 0 1px rgb(var(--z-gold)), 0 10px 30px -12px rgb(var(--z-glow-a) / .55); }
+#puntosZ.z-max #zLabel { color: rgb(var(--z-gold)); font-size: .78rem; font-weight: 800; letter-spacing: .04em; }
+#puntosZ.z-max .z-meter-fill { background: linear-gradient(90deg, rgb(var(--z-fire)), rgb(var(--z-gold)), rgb(var(--z-fire))); background-size: 200% 100%; animation: zshine 2.2s linear infinite; }
 @keyframes zshine { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .z-meter-fill { transition: none; } #puntosZ.z-max .z-meter-fill { animation: none; } }
 
 /* Estatus Leyenda Z18: marco dorado/fuego en el avatar (menú y «Mi cuenta») + insignia */
 .avatar-leyenda { isolation: isolate; }
 .avatar-leyenda::before { content: ''; position: absolute; inset: -6px; z-index: -1; border-radius: 9999px;
-  background: conic-gradient(from 0deg, #ffb700, #ff5500, #ffe08a, #ff5500, #ffb700); filter: drop-shadow(0 0 10px rgba(255, 140, 0, .7)); animation: zspin 6s linear infinite; }
-.avatar-leyenda #avatarView { border-color: #ffb700; box-shadow: 0 0 0 3px var(--z-bg2); }
+  background: conic-gradient(from 0deg, rgb(var(--z-gold)), rgb(var(--z-fire)), rgb(var(--z-gold-hi)), rgb(var(--z-fire)), rgb(var(--z-gold))); filter: drop-shadow(0 0 10px rgb(var(--z-glow-c) / .7)); animation: zspin 6s linear infinite; }
+.avatar-leyenda #avatarView { border-color: rgb(var(--z-gold)); box-shadow: 0 0 0 3px var(--z-bg2); }
 @keyframes zspin { to { transform: rotate(360deg); } }
-#accBtn.acc-leyenda { position: relative; border-color: #ffb700 !important; box-shadow: 0 0 0 2px #ffb700, 0 0 14px rgba(255, 120, 0, .75); }
+#accBtn.acc-leyenda { position: relative; border-color: rgb(var(--z-gold)) !important; box-shadow: 0 0 0 2px rgb(var(--z-gold)), 0 0 14px rgb(var(--z-glow-a) / .75); }
 #accBtn.acc-leyenda::after { content: '👑'; position: absolute; top: -.7rem; right: -.45rem; font-size: .85rem; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .6)); }
 .badge-leyenda { display: flex; width: max-content; align-items: center; gap: .4rem; padding: .3rem .9rem; border-radius: 9999px;
-  font: 400 1.15rem/1.2 'Bebas Neue', sans-serif; letter-spacing: .08em; color: #2a1500; background: linear-gradient(135deg, #ffd24d, #ff9d00 55%, #ff5500); box-shadow: 0 0 14px rgba(255, 150, 0, .55); }
+  font: 400 1.15rem/1.2 'Bebas Neue', sans-serif; letter-spacing: .08em; color: #2a1500; background: linear-gradient(135deg, #ffd24d, #ff9d00 55%, #ff5500); box-shadow: 0 0 14px rgb(var(--z-glow-b) / .55); }
 .badge-leyenda[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .avatar-leyenda::before { animation: none; } }
 
 /* Misiones Z18 */
 .mision { background: var(--z-card); border: 1px solid var(--z-border); border-radius: 1rem; padding: .85rem; transition: border-color .2s, box-shadow .2s; }
-.mision-lista { border-color: #ffb700; box-shadow: 0 0 0 1px rgba(255, 183, 0, .5), 0 8px 22px -12px rgba(255, 150, 0, .55); }
-.mision-pts { flex-shrink: 0; white-space: nowrap; font: 400 1.35rem/1 'Bebas Neue', sans-serif; letter-spacing: .04em; color: #ffb700; }
+.mision-lista { border-color: rgb(var(--z-gold)); box-shadow: 0 0 0 1px rgb(var(--z-gold) / .5), 0 8px 22px -12px rgb(var(--z-glow-b) / .55); }
+.mision-pts { flex-shrink: 0; white-space: nowrap; font: 400 1.35rem/1 'Bebas Neue', sans-serif; letter-spacing: .04em; color: rgb(var(--z-gold)); }
 .mision-estado { display: inline-flex; align-items: center; gap: .35rem; font-size: .75rem; font-weight: 700; color: var(--z-muted); }
-.mision-lista .mision-estado { color: #ffb700; }
+.mision-lista .mision-estado { color: rgb(var(--z-gold)); }
 .mision-hecha .mision-estado { color: #4ade80; }
-.mision-code { padding: .4rem .6rem; border-radius: .5rem; border: 1px dashed #ffb700; background: rgba(255, 183, 0, .08); color: #ffb700;
+.mision-code { padding: .4rem .6rem; border-radius: .5rem; border: 1px dashed rgb(var(--z-gold)); background: rgb(var(--z-gold) / .08); color: rgb(var(--z-gold));
   font: 700 .72rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; }
-/* Misión MANUAL (Rescate de Martes, Combo Completo): solo información. El aviso va donde estaba el botón, pero no es un botón (sin hover ni foco). */
+/* Misión MANUAL (Rescate de Miércoles, Combo Completo): solo información. El aviso va donde estaba el botón, pero no es un botón (sin hover ni foco). */
 .mision-wa { display: flex; align-items: flex-start; gap: .5rem; padding: .55rem .7rem; border-radius: .6rem; background: var(--z-chip);
   font-size: .75rem; font-weight: 700; line-height: 1.35; color: var(--z-ink); }
 .mision-wa .ico { flex-shrink: 0; margin-top: .05rem; font-size: 1rem; color: #25d366; }
 [data-theme="light"] .mision-wa .ico { color: #15803d; }
 .mision-red { display: inline-flex; min-height: 2.5rem; align-items: center; gap: .4rem; padding: 0 .9rem; border-radius: .6rem; border: 1px solid var(--z-hairline);
   font-size: .75rem; font-weight: 700; color: var(--z-ink); transition: border-color .15s, transform .15s; }
-.mision-red:hover { border-color: #ffb700; }
+.mision-red:hover { border-color: rgb(var(--z-gold)); }
 .mision-red:active { transform: scale(.96); }
 .mision-red.ok { border-color: #4ade80; color: #4ade80; }
-.mision-codigo { margin: .75rem 0; padding: .7rem 1rem; text-align: center; word-break: break-all; user-select: all; border: 2px dashed #ffb700; border-radius: .75rem; background: rgba(255, 183, 0, .1);
-  color: #ffb700; font: 800 1.15rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; }
-[data-theme="light"] .mision-pts, [data-theme="light"] .mision-code, [data-theme="light"] .mision-codigo, [data-theme="light"] .mision-lista .mision-estado { color: #b45309; }
+.mision-codigo { margin: .75rem 0; padding: .7rem 1rem; text-align: center; word-break: break-all; user-select: all; border: 2px dashed rgb(var(--z-gold)); border-radius: .75rem; background: rgb(var(--z-gold) / .1);
+  color: rgb(var(--z-gold)); font: 800 1.15rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; }
+[data-theme="light"] .mision-pts, [data-theme="light"] .mision-code, [data-theme="light"] .mision-codigo, [data-theme="light"] .mision-lista .mision-estado { color: rgb(var(--z-gold-ink)); }
 [data-theme="light"] .mision-hecha .mision-estado, [data-theme="light"] .mision-red.ok { color: #15803d; }
-[data-theme="light"] .z-max-msg, [data-theme="light"] #puntosZ.z-max #zLabel { color: #9a4a06; }
+[data-theme="light"] .z-max-msg, [data-theme="light"] #puntosZ.z-max #zLabel { color: rgb(var(--z-gold-deep)); }
 /* Mensajes de canje (misiones semanales y cuadro «¿Tenés un código de tu pedido?»): en modo claro, rojo y dorado más oscuros para que se lean sobre blanco */
 [data-theme="light"] [data-sem-msg].err, [data-theme="light"] #zCodeMsg.err { color: #b91c1c; }
-[data-theme="light"] [data-sem-msg].text-gold, [data-theme="light"] #zCodeMsg.text-gold { color: #b45309; }
+[data-theme="light"] [data-sem-msg].text-gold, [data-theme="light"] #zCodeMsg.text-gold { color: rgb(var(--z-gold-ink)); }
 
 /* ═════════════════ Campanita de avisos 🔔 (botón de la barra superior + panel lateral) ═════════════════
    Los colores salen de variables --campana-*: para vestirla de un evento (Halloween, Navidad…) alcanza con redefinirlas en html[data-evento="…"]
@@ -204,7 +227,7 @@ html { scroll-behavior: smooth; }
 [data-theme="light"] { --campana-nuevo: #d97706; --campana-ico: #b45309; }
 .campana { position: relative; transition: border-color .2s, transform .15s; }
 .campana:active { transform: scale(.94); }
-.campana:focus-visible { outline: 2px solid #ffb700; outline-offset: 2px; }
+.campana:focus-visible { outline: 2px solid rgb(var(--z-gold)); outline-offset: 2px; }
 .campana.tiene-avisos { border-color: var(--campana-acento); }
 .campana-badge { position: absolute; top: -.3rem; right: -.3rem; display: grid; place-items: center; min-width: 1.25rem; height: 1.25rem; padding: 0 .3rem; border-radius: 9999px;
                  background: var(--campana-badge); color: var(--campana-badge-tx); font: 800 .7rem/1 Montserrat, sans-serif; box-shadow: 0 0 0 2px var(--z-bg); pointer-events: none; }
@@ -220,13 +243,13 @@ html { scroll-behavior: smooth; }
               background: var(--z-card); color: var(--z-ink); font-size: .75rem; font-weight: 700; line-height: 1.2; transition: border-color .15s, opacity .15s; }
 .avisos-btn:hover:not(:disabled) { border-color: var(--campana-acento); }
 .avisos-btn:active:not(:disabled) { transform: scale(.97); }
-.avisos-btn:focus-visible { outline: 2px solid #ffb700; outline-offset: 2px; }
+.avisos-btn:focus-visible { outline: 2px solid rgb(var(--z-gold)); outline-offset: 2px; }
 .avisos-btn:disabled { opacity: .4; cursor: not-allowed; }
 .aviso { display: flex; gap: .75rem; padding: .85rem; background: var(--z-card); border: 1px solid var(--z-border); border-radius: 1rem; }
 .aviso-nuevo { border-color: var(--campana-nuevo); box-shadow: inset 4px 0 0 var(--campana-nuevo); }
 .aviso-ico { display: grid; place-items: center; flex-shrink: 0; width: 2.5rem; height: 2.5rem; border-radius: 9999px; background: var(--z-chip); color: var(--campana-ico); font-size: 1.1rem; }
 .aviso-cuerpo { display: block; width: 100%; padding: 0; text-align: left; border-radius: .5rem; }
-button.aviso-cuerpo:focus-visible { outline: 2px solid #ffb700; outline-offset: 3px; }
+button.aviso-cuerpo:focus-visible { outline: 2px solid rgb(var(--z-gold)); outline-offset: 3px; }
 .aviso-tag { display: block; font-size: .65rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--z-muted2); }
 .aviso-titulo { display: block; margin-top: .1rem; font-size: .875rem; font-weight: 600; line-height: 1.3; color: var(--z-muted); }
 .aviso-texto { display: block; margin-top: .2rem; font-size: .75rem; line-height: 1.45; color: var(--z-muted); overflow-wrap: anywhere; }
@@ -235,3 +258,169 @@ button.aviso-cuerpo:focus-visible { outline: 2px solid #ffb700; outline-offset: 
 .aviso-vacio { padding: 2.5rem 1rem; text-align: center; list-style: none; }
 /* Los botones de los avisos llevan a una parte de «Mi cuenta»: al bajar hasta ahí no la tapa la barra fija de arriba del panel */
 #puntosZ, #misionesZ, #zRewardsBox { scroll-margin-top: 5rem; }
+
+/* ═════════════════ EVENTO · HALLOWEEN 🎃 ═════════════════
+   Se enciende con «const activeEvent = 'halloween';» en event-manager.js: el gestor pone data-evento="halloween" en <html> (antes del primer dibujo, así
+   no hay parpadeo) y todo lo de abajo se aplica. Con «null» NADA de esto cuenta: la web queda como siempre. Es solo CSS: no toca la lógica (app.js).
+   Cómo está armado:
+     1) variables → la paleta (--hw-*) y su mapeo a los tokens del sitio (--z-*, --campana-*), uno para modo oscuro y otro para modo claro.
+                    Para REDEFINIR el evento (otro color, otra intensidad) alcanza con cambiar esas variables.
+     2) detalles  → lo que un cambio de color no resuelve: etiqueta de promo, brillos, selección de texto, tinta oscura sobre el naranja neón…
+     3) emojis    → ::before con content. No están en el HTML: al apagar el evento desaparecen solos y los lectores de pantalla no los leen («/ ""»).
+     4) paneles   → Carrito y Avisos: borde violeta, telaraña en la esquina y un bicho colgando del borde de arriba (CSS puro, sin clics, sin mover nada).
+   Modo claro: el naranja y el violeta se oscurecen lo justo para leerse sobre fondo claro (contraste AA); los botones siguen en naranja neón. */
+
+/* 1 · Variables — modo OSCURO (por defecto) */
+html[data-evento="halloween"] {
+  /* Paleta del evento (canales RGB) */
+  --hw-calabaza: 255 122 0;    /* Naranja Calabaza Neón */
+  --hw-brasa: 255 80 0;        /* …su extremo más rojizo (degradé de los botones) */
+  --hw-violeta: 168 85 247;    /* Violeta Espeluznante: brillos y bordes */
+  --hw-violeta-2: 124 58 237;  /* violeta intenso: etiqueta de promo y contador de la campanita */
+  --hw-purpura: 76 29 149;     /* Púrpura Oscuro: fondo de las etiquetas */
+  --hw-lavanda: 192 132 252;   /* violeta claro: textos y acentos sobre fondo oscuro */
+  --hw-noche: 26 11 46;        /* tinta oscura para el texto sobre naranja neón */
+  --hw-tela: 216 180 254;      /* telarañas */
+  --hw-tela-img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M100 0L0.0 0.0M100 0L7.6 38.3M100 0L29.3 70.7M100 0L61.7 92.4M100 0L100.0 100.0M80.0 0.0Q84.3 3.1 81.5 7.7M81.5 7.7Q86.7 8.9 85.9 14.1M85.9 14.1Q91.1 13.3 92.3 18.5M92.3 18.5Q96.9 15.7 100.0 20.0M62.0 0.0Q70.2 5.9 64.9 14.5M64.9 14.5Q74.7 16.9 73.1 26.9M73.1 26.9Q83.1 25.3 85.5 35.1M85.5 35.1Q94.1 29.8 100.0 38.0M44.0 0.0Q56.1 8.7 48.3 21.4M48.3 21.4Q62.8 24.9 60.4 39.6M60.4 39.6Q75.1 37.2 78.6 51.7M78.6 51.7Q91.3 43.9 100.0 56.0M26.0 0.0Q41.9 11.5 31.6 28.3M31.6 28.3Q50.8 32.9 47.7 52.3M47.7 52.3Q67.1 49.2 71.7 68.4M71.7 68.4Q88.5 58.1 100.0 74.0M8.0 0.0Q27.8 14.4 15.0 35.2M15.0 35.2Q38.8 40.9 34.9 65.1M34.9 65.1Q59.1 61.2 64.8 85.0M64.8 85.0Q85.6 72.2 100.0 92.0' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+
+  /* Superficies: negro violáceo */
+  --z-bg: #0b0714; --z-bg2: #140c24; --z-hero1: #2a1245;
+  --z-card: #1b1131; --z-input: #100a1e; --z-chip: #2a1c47;
+  --z-border: #35235a; --z-hairline: #4d3a78;
+  --z-muted: #e9ddfb; --z-muted2: #b8a6d9;
+
+  /* Tokens del sitio → paleta del evento */
+  --z-fire: var(--hw-calabaza);
+  --z-fire-deep: var(--hw-brasa);
+  --z-gold: var(--hw-lavanda);          /* lo que era dorado (subtítulos, enlaces, foco, puntos, misiones) pasa a violeta claro */
+  --z-gold-hi: 233 213 255;
+  --z-amber: var(--hw-calabaza);        /* la barra de Puntos Z va de violeta a naranja neón */
+  --z-star: var(--hw-calabaza);         /* estrella de favoritos */
+  --z-on-fire: var(--hw-noche);         /* texto oscuro sobre el naranja neón (contraste 6:1 o más) */
+  --z-glow-a: var(--hw-violeta); --z-glow-b: var(--hw-violeta); --z-glow-c: var(--hw-violeta);
+
+  /* Campanita 🔔 y panel de avisos */
+  --campana-badge: rgb(var(--hw-violeta-2));
+  --campana-badge-tx: #ffffff;
+  --campana-acento: rgb(var(--hw-calabaza));
+  --campana-nuevo: rgb(var(--hw-calabaza));
+  --campana-ico: rgb(var(--hw-lavanda));
+}
+
+/* 1 · Variables — modo CLARO */
+html[data-evento="halloween"][data-theme="light"] {
+  --hw-tela: 109 40 217;
+
+  --z-bg: #f6f1fc; --z-bg2: #ffffff; --z-hero1: #e9dcfb;
+  --z-card: #ffffff; --z-input: #f2ecfa; --z-chip: #ece3f8;
+  --z-border: #e2d6f3; --z-hairline: #cbbbe6;
+  --z-ink: #1c1030; --z-muted: #4b3d66; --z-muted2: #6e5f8c;
+
+  --z-fire: 194 65 12;                  /* calabaza tostada: se lee como texto e ícono sobre fondo claro */
+  --z-fire-deep: 154 52 18;
+  --z-gold: 109 40 217;                 /* violeta profundo */
+  --z-gold-hi: 167 139 250;
+  --z-gold-ink: 91 33 182; --z-gold-line: 124 58 237; --z-gold-deep: 76 29 149;
+  --z-amber: 234 88 12;
+  --z-star: 234 88 12; --z-star-ink: 194 65 12; --z-star-line: 234 88 12;
+  --z-btn-a: 255 138 31; --z-btn-b: 255 106 0;   /* el botón principal sigue en naranja neón también sobre claro */
+
+  --campana-badge: rgb(var(--hw-violeta-2));
+  --campana-acento: rgb(var(--z-fire));
+  --campana-nuevo: rgb(var(--z-fire));
+  --campana-ico: rgb(var(--z-gold));
+}
+
+/* 2 · Detalles */
+/* Selección de texto: violeta con letra blanca (el naranja neón con letra blanca no se lee) */
+html[data-evento="halloween"] *::selection { background: rgb(var(--hw-violeta-2)); color: #fff; }
+/* Cabecera: el logo brilla en violeta y naranja; las brasas alternan los dos colores */
+html[data-evento="halloween"] .glow-logo { filter: drop-shadow(0 0 24px rgb(var(--hw-violeta) / .6)) drop-shadow(0 0 10px rgb(var(--hw-calabaza) / .55)); }
+html[data-evento="halloween"] .glow-text { text-shadow: 0 0 16px rgb(var(--hw-violeta) / .75); }
+html[data-evento="halloween"][data-theme="light"] .glow-text { text-shadow: 0 0 14px rgb(var(--hw-violeta) / .3); }
+html[data-evento="halloween"] .ember { background: rgb(var(--hw-calabaza)); box-shadow: 0 0 8px 2px rgb(var(--hw-calabaza) / .7); }
+html[data-evento="halloween"] .ember:nth-child(even) { background: rgb(var(--hw-lavanda)); box-shadow: 0 0 8px 2px rgb(var(--hw-violeta) / .7); }
+html[data-evento="halloween"] .photo { background: linear-gradient(135deg, #2a1245, #0f0a1c); }
+/* Etiqueta de promoción: violeta con aro y brillo naranja (resalta sobre las fotos cálidas de la comida) */
+html[data-evento="halloween"] .tag { background: linear-gradient(135deg, rgb(var(--hw-violeta-2)), rgb(var(--hw-purpura))); color: #fff;
+  box-shadow: 0 0 0 1px rgb(var(--hw-calabaza) / .85), 0 0 14px rgb(var(--hw-calabaza) / .45), 0 4px 14px rgba(0, 0, 0, .55); }
+/* Botón principal: naranja neón con aro violeta; al pasar el mouse brilla más */
+html[data-evento="halloween"] .btn-fire { box-shadow: 0 4px 18px rgb(var(--z-btn-a) / .5), 0 0 0 1px rgb(var(--hw-violeta) / .4); }
+html[data-evento="halloween"] .btn-fire:hover { box-shadow: 0 6px 26px rgb(var(--z-btn-a) / .75), 0 0 0 2px rgb(var(--hw-violeta) / .65); }
+/* Tarjetas al pasar el mouse: borde naranja y halo violeta */
+html[data-evento="halloween"] .menu-card:hover { box-shadow: 0 10px 28px -8px rgb(var(--hw-violeta) / .55), 0 0 18px -4px rgb(var(--hw-calabaza) / .45); }
+/* Controles con relleno naranja y texto/íconos blancos: sobre el naranja neón (modo oscuro) llevan tinta oscura para leerse */
+html[data-evento="halloween"]:not([data-theme="light"]) #avatarEdit { color: rgb(var(--z-on-fire)); }
+html[data-evento="halloween"]:not([data-theme="light"]) #accBtn.\!text-white { color: rgb(var(--z-on-fire)) !important; }
+/* Contador del carrito: violeta claro con letra negra (oscuro); en claro el violeta es profundo, así que va con letra blanca */
+html[data-evento="halloween"][data-theme="light"] #badge { color: #fff; }
+/* Puntos Z: el saldo en naranja neón y las barras de recompensas con el mismo degradé violeta → naranja que el medidor */
+html[data-evento="halloween"] #zBalance { color: rgb(var(--z-fire)); }
+html[data-evento="halloween"]:not([data-theme="light"]) #zBalance { text-shadow: 0 0 18px rgb(var(--hw-calabaza) / .4); }
+html[data-evento="halloween"] .z-meter-fill { box-shadow: 0 0 10px rgb(var(--hw-calabaza) / .55); }
+html[data-evento="halloween"] .bar-fill { background-image: linear-gradient(90deg, rgb(var(--z-gold)), rgb(var(--z-amber))); }
+html[data-evento="halloween"]:not([data-theme="light"]) .price-tag { text-shadow: 0 0 14px rgb(var(--hw-calabaza) / .35); }
+/* Insignia Leyenda Z18: violeta → naranja con tinta oscura */
+html[data-evento="halloween"] .badge-leyenda { color: rgb(var(--hw-noche)); background: linear-gradient(135deg, #e9d5ff, rgb(var(--hw-lavanda)) 55%, rgb(var(--hw-calabaza))); }
+/* Campanita: cuando hay avisos nuevos, un brillo naranja alrededor */
+html[data-evento="halloween"] .campana.tiene-avisos { box-shadow: 0 0 12px rgb(var(--hw-calabaza) / .5); }
+
+/* 3 · Emojis en los títulos (reemplazan al ícono de siempre, que se esconde mientras dura el evento) */
+html[data-evento="halloween"] :is(section[data-t] h2, #cartTitle, #avisosTitle, #accountTitle, #loginTitle, #registerTitle) > svg.ico { display: none; }
+html[data-evento="halloween"] :is(section[data-t] h2, #cartTitle, #avisosTitle, #accountTitle, #loginTitle, #registerTitle)::before {
+  display: inline-block; margin-right: .4em; font-size: .8em; line-height: 1; vertical-align: .04em; text-shadow: none; }
+html[data-evento="halloween"]:not([data-theme="light"]) :is(section[data-t] h2, #cartTitle, #avisosTitle, #accountTitle, #loginTitle, #registerTitle) { text-shadow: 0 0 20px rgb(var(--hw-violeta) / .6); }
+html[data-evento="halloween"] #burgers h2::before   { content: "🎃"; content: "🎃" / ""; }
+html[data-evento="halloween"] #combos h2::before    { content: "👻"; content: "👻" / ""; }
+html[data-evento="halloween"] #milanesas h2::before { content: "🕷️"; content: "🕷️" / ""; }
+html[data-evento="halloween"] #pizzetas h2::before  { content: "🧙"; content: "🧙" / ""; }
+html[data-evento="halloween"] #reclutas h2::before  { content: "🍬"; content: "🍬" / ""; }
+html[data-evento="halloween"] #minutas h2::before   { content: "💀"; content: "💀" / ""; }
+html[data-evento="halloween"] #bebidas h2::before   { content: "🧪"; content: "🧪" / ""; }
+html[data-evento="halloween"] #info h2::before      { content: "🌙"; content: "🌙" / ""; }
+html[data-evento="halloween"] #cartTitle::before     { content: "🎃"; content: "🎃" / ""; }
+html[data-evento="halloween"] #avisosTitle::before   { content: "🦇"; content: "🦇" / ""; }
+html[data-evento="halloween"] #accountTitle::before  { content: "🎃"; content: "🎃" / ""; }
+html[data-evento="halloween"] #loginTitle::before    { content: "👻"; content: "👻" / ""; }
+html[data-evento="halloween"] #registerTitle::before { content: "🧛"; content: "🧛" / ""; }
+/* «Mi cuenta»: títulos de las secciones (el del historial no tiene id: se lo encuentra por el bloque que le sigue) */
+html[data-evento="halloween"] :is(#misionesZ, #zRewardsBox) > h3::before { margin-right: .35em; font-size: .85em; }
+html[data-evento="halloween"] #misionesZ > h3::before   { content: "🔮"; content: "🔮" / ""; }
+html[data-evento="halloween"] #zRewardsBox > h3::before { content: "🍬"; content: "🍬" / ""; }
+html[data-evento="halloween"] h3:has(+ #orderHistory)::before { content: "🕸️"; content: "🕸️" / ""; margin-right: .35em; font-size: .85em; }   /* :has() va en regla aparte: si un navegador viejo no la entiende, solo se pierde este emoji */
+/* Escobas 🧹: «Limpiar» (avisos) y «Vaciar carrito» */
+html[data-evento="halloween"] #avisosLimpiar > svg.ico { display: none; }
+html[data-evento="halloween"] #avisosLimpiar::before { content: "🧹"; content: "🧹" / ""; font-size: 1.1rem; line-height: 1; }
+html[data-evento="halloween"] #clear::before { content: "🧹"; content: "🧹" / ""; display: inline-block; margin-right: .4em; }
+
+/* 4 · Paneles laterales y cabecera: borde violeta, telaraña en la esquina y un bicho colgando (todo decorativo: sin clics ni cambios de tamaño) */
+html[data-evento="halloween"] :is(#cart, #avisos) { border-left-color: rgb(var(--hw-violeta) / .55); }
+/* El halo violeta solo va con el panel ABIERTO: cerrado (inert) el panel espera fuera de pantalla y su sombra se asomaría por el borde derecho */
+html[data-evento="halloween"] :is(#cart, #avisos):not([inert]) { box-shadow: -16px 0 44px -18px rgb(var(--hw-violeta) / .6), 0 25px 50px -12px rgba(0, 0, 0, .55); }
+html[data-evento="halloween"][data-theme="light"] :is(#cart, #avisos):not([inert]) { box-shadow: -16px 0 40px -18px rgb(var(--hw-violeta) / .4), 0 25px 50px -12px rgba(0, 0, 0, .25); }
+html[data-evento="halloween"] :is(.safe-cart-top, .safe-avisos-top) { position: relative; border-bottom-color: rgb(var(--hw-violeta) / .4); }
+html[data-evento="halloween"] .safe-cart-bottom { border-top-color: rgb(var(--hw-violeta) / .4); }
+html[data-evento="halloween"] :is(.safe-cart-top, .safe-avisos-top)::before, html[data-evento="halloween"] header::before {
+  content: ""; position: absolute; top: 0; right: 0; z-index: -1; width: 4.7rem; height: 4.7rem; pointer-events: none;
+  background: rgb(var(--hw-tela)); opacity: .32; -webkit-mask: var(--hw-tela-img) top right / contain no-repeat; mask: var(--hw-tela-img) top right / contain no-repeat; }
+html[data-evento="halloween"] header::before { z-index: 0; width: clamp(5rem, 28vw, 8rem); height: clamp(5rem, 28vw, 8rem); opacity: .38; }
+html[data-evento="halloween"] .safe-cart-top::after, html[data-evento="halloween"] header::after {   /* araña colgada de un hilo */
+  content: "🕷️"; content: "🕷️" / ""; position: absolute; top: 0; right: 4.7rem; padding-top: 1.9rem; font-size: 1.15rem; line-height: 1; pointer-events: none;
+  background: linear-gradient(rgb(var(--hw-tela) / .75), rgb(var(--hw-tela) / .75)) 50% 0 / 1px 1.75rem no-repeat; transform-origin: 50% 0; }
+html[data-evento="halloween"] header::after { right: 1.3rem; padding-top: 4.9rem; font-size: 1.5rem; background-size: 1px 4.6rem; }
+html[data-evento="halloween"] .safe-avisos-top::after {   /* murciélago colgado boca abajo */
+  content: "🦇"; content: "🦇" / ""; position: absolute; top: .3rem; right: 4.7rem; font-size: 1.2rem; line-height: 1; pointer-events: none;
+  transform-origin: 50% 0; transform: translateY(100%) scaleY(-1); }
+@keyframes hw-columpio { from { rotate: -7deg; } to { rotate: 7deg; } }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-evento="halloween"] :is(#cart, #avisos):not([inert]) :is(.safe-cart-top, .safe-avisos-top)::after, html[data-evento="halloween"] header::after { animation: hw-columpio 3.8s ease-in-out infinite alternate; }
+}
+
+/* 5 · Botones «Agregar al carrito»: telarañas sutiles en dos esquinas (tinta oscura sobre el naranja neón).
+   Decorativas: sin clics y sin tocar el texto ni el tamaño del botón (se recortan con sus bordes redondeados). */
+html[data-evento="halloween"] .btn-fire[data-add] { position: relative; overflow: hidden; }
+html[data-evento="halloween"] .btn-fire[data-add]::before, html[data-evento="halloween"] .btn-fire[data-add]::after {
+  content: ""; position: absolute; width: clamp(1.8rem, 16%, 2.6rem); aspect-ratio: 1; pointer-events: none;
+  background: rgb(var(--hw-noche)); opacity: .3; -webkit-mask: var(--hw-tela-img) top right / contain no-repeat; mask: var(--hw-tela-img) top right / contain no-repeat; }
+html[data-evento="halloween"] .btn-fire[data-add]::before { top: 0; right: 0; }
+html[data-evento="halloween"] .btn-fire[data-add]::after { bottom: 0; left: 0; transform: rotate(180deg); }

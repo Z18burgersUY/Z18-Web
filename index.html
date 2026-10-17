@@ -7,6 +7,8 @@
 <meta name="description" content="Menú digital de Z18: hamburguesas artesanales, combos, milanesas al plato y pizzetas. Carne 100% de verdad. Delivery rápido en Paso de la Arena, Montevideo.">
 <meta name="theme-color" content="#0a0b0d">
 <script>try{if(localStorage.getItem('z18_theme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+<!-- Gestor de eventos temáticos (Halloween…): va acá, en el <head>, para que el tema del evento ya esté puesto en el primer dibujo (sin parpadeo). El interruptor está dentro del archivo -->
+<script src="event-manager.js"></script>
 <link rel="icon" type="image/webp" href="assets/logo.webp">
 
 <!-- Tipografías: Bebas Neue (títulos), Montserrat (texto), Permanent Marker (trazo a mano) -->
@@ -19,7 +21,7 @@
 <script>
   tailwind.config = { theme: { extend: {
     colors: {
-      fire: '#ff5500', gold: '#ffb700',
+      fire: 'rgb(var(--z-fire) / <alpha-value>)', gold: 'rgb(var(--z-gold) / <alpha-value>)',   // canales RGB definidos en styles.css (un evento temático los redefine)
       darkbg: 'var(--z-bg)', cardbg: 'var(--z-card)', cardborder: 'var(--z-border)',
       ink: 'var(--z-ink)', muted: 'var(--z-muted)', muted2: 'var(--z-muted2)', hairline: 'var(--z-hairline)'
     },
@@ -162,8 +164,10 @@
     <div class="grid gap-5 md:grid-cols-2">
       <div class="panel">
         <h3 class="sub mb-2"><svg class="ico mr-2" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><use href="#i-clock-r"/></svg>Nuestros horarios</h3>
-        <p class="flex items-baseline justify-between gap-3 border-b border-dashed border-hairline py-3"><span class="font-bold uppercase">Domingo a jueves</span><b class="price-tag !text-3xl">20:00 a 23:00 hs</b></p>
-        <p class="flex items-baseline justify-between gap-3 py-3"><span class="font-bold uppercase">Viernes y sábado</span><b class="price-tag !text-3xl">20:00 a 00:00 hs</b></p>
+        <!-- Cada fila: días a la izquierda y horario a la derecha; en pantallas muy angostas (320 px) el horario baja a su propia línea en vez de salirse del recuadro -->
+        <p class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-dashed border-hairline py-3"><span class="grow basis-28 font-bold uppercase">Domingo, miércoles y jueves</span><b class="price-tag ml-auto !text-3xl">20:00 a 23:00 hs</b></p>
+        <p class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-dashed border-hairline py-3"><span class="grow basis-28 font-bold uppercase">Viernes y sábado</span><b class="price-tag ml-auto !text-3xl">20:00 a 00:00 hs</b></p>
+        <p class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-3"><span class="grow basis-28 font-bold uppercase">Lunes y martes</span><b class="price-tag cerrado ml-auto !text-3xl">Cerrado</b></p>
       </div>
       <div class="panel">
         <h3 class="sub mb-2"><svg class="ico mr-2" viewBox="0 0 384 512" aria-hidden="true" focusable="false"><use href="#i-location-dot"/></svg>Ubicación</h3>
@@ -311,6 +315,5 @@
 </div>
 
 <script src="app.js"></script>
-<script src="event-manager.js"></script>
 </body>
 </html>
