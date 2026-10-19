@@ -16,10 +16,14 @@
      (si mañana el evento es otro, se muestra igual). El interruptor lo maneja app.js a través de window.Z18Events (ver más abajo).
    ► LOGO DEL EVENTO: cada evento puede traer su propio logo. En su entrada de EVENTS van dos propiedades:
         logo:   'assets/logo-halloween.webp'                    el archivo (cuadrado y con fondo transparente, como assets/logo.webp): subilo a esa ruta del repositorio (o, si el repo no usa carpetas, suelto en la raíz)
-        logoEn: ['#logo', 'footer img[alt^="Emblema"]']         qué <img> lo usan, como selectores CSS (Halloween: la cabecera y el pie). Sin `logoEn`: solo '#logo'.
+        logoEn: ['#logo', 'footer img[alt^="Emblema"]', '#auth .safe-auth-top img']
+                                                                 qué <img> lo usan, como selectores CSS (Halloween: la cabecera, el pie y la barra de «Mi cuenta»). Sin `logoEn`: solo '#logo'.
      La señal es SIEMPRE html[data-evento] (el mismo atributo del que cuelga el tema; nada mira data-theme ni z18_theme, que solo valen light / dark):
      lo pone el gestor salvo que el cliente haya apagado el evento (z18_evento_off), y mientras esté puesto esos <img> usan el logo del evento.
-     El logo de «Mi cuenta» queda como está; el favicon también (salvo en un repositorio plano: ver «Respaldo»).
+     Los tres: #logo = el <img id="logo"> de la cabecera · 'footer img[alt^="Emblema"]' = el del pie · '#auth .safe-auth-top img' = el logo chico de arriba a la derecha
+     de «Mi cuenta» (la barra del panel, junto a «Atrás»). En «Mi cuenta» NO sirve '#auth img': ese panel también muestra fotos de productos (la hamburguesa
+     favorita, el catálogo de Puntos Z) y se las pisaría con el logo; por eso el selector baja solo hasta la barra de arriba (.safe-auth-top).
+     El favicon queda como está (salvo en un repositorio plano: ver «Respaldo»).
         · Sin parpadeo: el <img> se cambia en el instante en que el navegador lo arma —antes de dibujarlo, y antes de que el pie (lazy) pida su
           archivo— y sin mover nada: ya trae width/height. Si el <img> ya existe (el interruptor de «Mi cuenta»), se cambia en el acto.
         · Sigue al interruptor de «Mi cuenta» sin recargar: Z18Events.elegir / apagar / encender cambian o devuelven todos los logos a la vez.
@@ -60,7 +64,7 @@ const activeEvent = 'halloween';
       nombre: 'Halloween',
       emoji: '🎃',                                    // lo muestra el interruptor de «Mi cuenta»
       logo: 'assets/logo-halloween.webp',             // el logo especial del evento (si el archivo falta, quedan los logos de siempre)
-      logoEn: ['#logo', 'footer img[alt^="Emblema"]'], // dónde se usa: la cabecera y el pie (selectores CSS de <img>); el logo de «Mi cuenta» queda como está
+      logoEn: ['#logo', 'footer img[alt^="Emblema"]', '#auth .safe-auth-top img'], // dónde se usa (selectores CSS de <img>): la cabecera, el pie y el logo chico de la barra de «Mi cuenta»
       /* Solo el decorado dinámico de abajo: la paleta, los emojis y los paneles (el tema) están en styles.css, sección «EVENTO · HALLOWEEN».
          Los colores salen de las mismas variables --hw-* (con un valor de respaldo por si faltaran). */
       css: `
