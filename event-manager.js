@@ -41,12 +41,23 @@
      (también la elección guardada del cliente se lee ahí, antes de pintar).
    ► REDEFINIR un evento (otro color, otro brillo): cambiá las variables --hw-* de la sección «EVENTO · HALLOWEEN» de styles.css
      (hay un bloque para modo oscuro y otro para modo claro). Los emojis de cada título están en esa misma sección, en la parte «3 · Emojis».
-   ► SUMAR otro evento: copiá esa sección de styles.css cambiando «halloween» por el nombre nuevo, agregá una entrada a EVENTS
-     (con css/js vacíos si no necesita decorado) y poné su nombre en activeEvent.
+   ► SUMAR OTRO EVENTO (Navidad, Verano, Pascua…): SOLO DOS PASOS, sin tocar ninguna lógica (ni este archivo, salvo la línea del interruptor, ni app.js):
+        1) styles.css → sumá la sección del evento. Al final del archivo está la «PLANTILLA · EVENTO NUEVO»: se copia lo que dice, se pega arriba de la plantilla,
+           se cambia NOMBRE por el nombre del evento (minúsculas, sin espacios ni tildes: navidad, verano…) y se ponen sus colores. En esa misma sección van el
+           nombre y el emoji que muestra el interruptor de «Mi cuenta» (--evento-nombre y --evento-emoji: «🎄 Tema de Navidad»).
+        2) acá arriba → const activeEvent = 'navidad';        (el mismo nombre que le pusiste a la sección)
+      Y listo: el tema se pinta solo (cuelga de html[data-evento="navidad"]), el interruptor de «Mi cuenta» aparece con su nombre y su emoji, cada cliente puede apagarlo
+      (su elección vale solo para ESE evento) y de Halloween no queda nada: su decorado, su logo y su CSS cuelgan de html[data-evento="halloween"] y con otro evento
+      puesto no se aplican. Si activeEvent no coincide con ninguna sección de styles.css ni con una entrada de EVENTS (un error de tipeo, o falta subir styles.css), el
+      gestor no enciende nada y la consola avisa «Evento desconocido»: nunca queda un interruptor sin tema.
+   ► OPCIONAL — decorado propio y logo propio: solo si el evento los necesita se suma además una entrada a EVENTS (más abajo), con el mismo nombre. Las entradas son
+     todas opcionales (con una entrada, sus nombre/emoji mandan sobre los de la sección de styles.css):
+        nombre, emoji → lo que dice el interruptor (si falta: --evento-nombre / --evento-emoji de styles.css y, si tampoco están, el nombre con la primera en mayúscula)
         css      → texto CSS que se inyecta en <style id="z18-evento-…-css">      (o cssUrl: 'eventos/navidad.css')
         js(ctx)  → función que arma el decorado (ctx.add(nodo, padre, alInicio) lo agrega y se limpia solo al apagar);
                    puede devolver una función de limpieza extra                      (o jsUrl: 'eventos/navidad.js')
-        logo, logoEn → el logo del evento y los <img> que lo usan (opcionales; ver «LOGO DEL EVENTO» más arriba)
+        logo, logoEn → el logo del evento y los <img> que lo usan (ver «LOGO DEL EVENTO» más arriba). Va en el registro y no en styles.css porque el cambio de logo
+                       tiene que pasar ANTES del primer dibujo, cuando styles.css todavía no llegó.
    Reglas de oro: nada de position estático que mueva el diseño (usá absolute/fixed), pointer-events: none en el decorado, y respetar
    prefers-reduced-motion. Si el mod falla, el gestor lo apaga solo y la web sigue funcionando.
    Desde la consola del navegador: Z18Events.apagar() lo quita al instante (solo esta visita) y Z18Events.encender() lo vuelve a poner;
@@ -57,7 +68,9 @@ const activeEvent = 'halloween';
 (function Z18EventManager() {
   'use strict';
 
-  /* ───────────────────────────── REGISTRO DE EVENTOS (los mods) ───────────────────────────── */
+  /* ───────────────────────────── REGISTRO DE EVENTOS (los mods) ─────────────────────────────
+     Solo para lo que un archivo de CSS no puede hacer: decorado dinámico y logo propio. Un evento SIN entrada acá funciona igual, solo con su sección de styles.css
+     (ver «SUMAR OTRO EVENTO» arriba). Un evento con entrada acá no necesita nada más que lo que ya tiene Halloween. */
   const EVENTS = {
 
     halloween: {
@@ -110,8 +123,12 @@ const activeEvent = 'halloween';
   /* ───────────────────────────── CARGADOR ───────────────────────────── */
   if (activeEvent === null || activeEvent === undefined || activeEvent === false || activeEvent === '') return;   // apagado: no se toca el DOM
 
-  const mod = EVENTS[activeEvent];
-  if (!mod) { console.warn('[Z18] Evento desconocido en activeEvent:', activeEvent, '· disponibles:', Object.keys(EVENTS).join(', ')); return; }
+  const registrado = typeof activeEvent === 'string' && Object.prototype.hasOwnProperty.call(EVENTS, activeEvent);   // ¿tiene entrada en EVENTS (decorado / logo)?
+  if (!registrado && !(typeof activeEvent === 'string' && /^[a-z][a-z0-9-]{0,40}$/.test(activeEvent))) {
+    console.warn('[Z18] Evento desconocido en activeEvent:', activeEvent, '· el nombre va en minúsculas, sin espacios ni tildes (por ejemplo \'navidad\') · con entrada en EVENTS:', Object.keys(EVENTS).join(', '));
+    return;
+  }
+  const mod = registrado ? EVENTS[activeEvent] : {};    // sin entrada: evento «solo CSS» (su sección de styles.css), sin decorado ni logo propio
 
   const CLAVE = 'z18_evento_off';                     // localStorage: nombre del evento que el CLIENTE apagó desde «Mi cuenta»
   const apagadoPorCliente = () => { try { return localStorage.getItem(CLAVE) === activeEvent; } catch (e) { return false; } };
@@ -122,6 +139,32 @@ const activeEvent = 'halloween';
   let armado = false;          // ¿ya se inyectó el decorado? (necesita el DOM armado)
   const root = document.documentElement;
   const encendido = () => root.getAttribute('data-evento') === activeEvent;   // ¿el evento está puesto ahora? LA señal: el atributo del que cuelga el tema
+
+  /* La sección del evento en styles.css: las reglas cuyo selector nombra html[data-evento="…"] (también dentro de @media, @supports…). De ahí salen dos cosas:
+     · ¿existe? Un evento sin entrada en EVENTS solo se enciende si styles.css trae su sección: un error de tipeo en activeEvent no deja un interruptor sin tema.
+     · su nombre y su emoji (--evento-nombre / --evento-emoji), leídos de las reglas y no del estilo calculado, así siguen a mano aunque el evento esté apagado. */
+  let reglasDelEvento = null;
+  const seccionEnCss = () => {
+    if (reglasDelEvento) return reglasDelEvento;
+    const clave = '[data-evento="' + activeEvent + '"]', halladas = [];
+    const recorrer = reglas => Array.prototype.forEach.call(reglas, r => {
+      if (r.selectorText && r.selectorText.indexOf(clave) >= 0) halladas.push(r);
+      if (r.cssRules) recorrer(r.cssRules);
+    });
+    Array.prototype.forEach.call(document.styleSheets, hoja => { try { recorrer(hoja.cssRules); } catch (e) { /* una hoja de otro dominio no se puede leer: se la salta */ } });
+    return halladas.length ? (reglasDelEvento = halladas) : halladas;           // solo se guarda si existe: si styles.css todavía no llegó, la próxima vez se busca de nuevo
+  };
+  const textoDeLaSeccion = variable => {              // --evento-nombre: "Navidad"  →  Navidad (sin comillas); '' si la sección no lo trae
+    const reglas = seccionEnCss();
+    for (let i = 0; i < reglas.length; i++) {
+      const v = (reglas[i].style.getPropertyValue(variable) || '').trim(), m = /^(["'])([\s\S]*)\1$/.exec(v), t = (m ? m[2] : v).trim();
+      if (t) return t;
+    }
+    return '';
+  };
+  const nombreDe = () => mod.nombre || textoDeLaSeccion('--evento-nombre') || activeEvent.charAt(0).toUpperCase() + activeEvent.slice(1).replace(/-/g, ' ');
+  const emojiDe = () => mod.emoji || textoDeLaSeccion('--evento-emoji');
+  const retirarAPI = () => { try { delete window.Z18Events; } catch (e) { window.Z18Events = undefined; } };   // sin API no hay interruptor en «Mi cuenta»
 
   /* Logo del evento (mod.logo) en los <img> de mod.logoEn. Los logos siguen a html[data-evento]: aplicarLogos() solo actúa con el evento puesto y
      devolverLogos() los devuelve a todos. Este archivo corre en el <head>, ANTES de que existan los <img>: un observador los cambia en el instante
@@ -136,8 +179,9 @@ const activeEvent = 'halloween';
   let logoRoto = false;                               // el archivo del evento no cargó en ninguna ruta: en esta visita no se vuelve a intentar
   /* Dónde se busca el archivo: en la ruta de `logo` ('assets/logo-halloween.webp') y, si no está ahí, en la RAÍZ del sitio con el mismo nombre
      ('logo-halloween.webp'): así funciona también cuando el repositorio guarda los archivos sueltos, igual que el logo de siempre (que cae a 'logo.webp'). */
+  const NOMBRE_DE_ARCHIVO = /^(?:[^\/:?#]+\/)+([^\/:?#]+)$/;      // 'assets/logo.webp' → 'logo.webp': solo rutas relativas dentro de una carpeta (no URLs ni rutas que empiezan con /)
   const RUTAS = (() => {
-    const m = /^(?:[^\/:?#]+\/)+([^\/:?#]+)$/.exec(mod.logo || '');        // solo rutas relativas dentro de una carpeta (no URLs ni rutas que empiezan con /)
+    const m = NOMBRE_DE_ARCHIVO.exec(mod.logo || '');
     return mod.logo ? [mod.logo].concat(m ? [m[1]] : []) : [];
   })();
   let intento = 0;                                    // cuál de RUTAS usan los <img> (0 = la configurada)
@@ -172,14 +216,14 @@ const activeEvent = 'halloween';
     ? ' Entonces falla el navegador al dibujarlo: el archivo está dañado, incompleto o no es un WebP válido; o algo (una extensión, la política CSP img-src) lo bloqueó; o la conexión falló justo en ese momento (recargá con Ctrl+F5 para descartarlo).' : '')).join('\n');
   const explicarFalloLogo = falladas => {             // el archivo no cargó en ninguna ruta: la consola dice qué se probó y por qué falló cada una
     const urls = falladas.map(urlDe);
-    console.error('[Z18] El logo del evento «' + mod.nombre + '» no cargó: ' + urls.join(' ni ') + ' · se muestra el logo de siempre (event-manager.js → logo: \'' + mod.logo + '\'). Consultando al servidor para ver la causa…');
-    Promise.all(urls.map(consultarLogo)).then(cs => console.error('[Z18] Causa de que no cargue el logo del evento «' + mod.nombre + '»:\n' + causas(urls, cs)
+    console.error('[Z18] El logo del evento «' + nombreDe() + '» no cargó: ' + urls.join(' ni ') + ' · se muestra el logo de siempre (event-manager.js → logo: \'' + mod.logo + '\'). Consultando al servidor para ver la causa…');
+    Promise.all(urls.map(consultarLogo)).then(cs => console.error('[Z18] Causa de que no cargue el logo del evento «' + nombreDe() + '»:\n' + causas(urls, cs)
       + (cs.every(c => c.noEsta) ? '\nSolución: subí el archivo al repositorio con ese nombre EXACTO —carpeta y mayúsculas: Vercel las distingue— a «' + mod.logo + '»'
         + (RUTAS.length > 1 ? ' (o a la raíz, como «' + RUTAS[1] + '»)' : '') + ', esperá a que Vercel termine de publicar y recargá con Ctrl+F5.' : ''))).catch(() => { /* el aviso nunca rompe nada */ });
   };
   const avisarRutaAlternativa = falladas => {         // no estaba en la ruta configurada pero sí en la raíz: funciona, y la consola lo cuenta (con la causa)
     const urls = falladas.map(urlDe), usada = urlDe(RUTAS[intento]);
-    Promise.all(urls.map(consultarLogo)).then(cs => console.warn('[Z18] El logo del evento «' + mod.nombre + '» no está en la ruta configurada (event-manager.js → logo: \'' + mod.logo
+    Promise.all(urls.map(consultarLogo)).then(cs => console.warn('[Z18] El logo del evento «' + nombreDe() + '» no está en la ruta configurada (event-manager.js → logo: \'' + mod.logo
       + '\') y se usa el de la raíz del sitio: ' + usada + '. Funciona, pero lo correcto es subirlo a «' + mod.logo + '» en el repositorio.\n' + causas(urls, cs))).catch(() => { /* el aviso nunca rompe nada */ });
   };
   const rendirse = falladas => {                      // no está en ninguna ruta: vuelven los logos de siempre (todos), con su respaldo, y la consola explica por qué
@@ -190,7 +234,7 @@ const activeEvent = 'halloween';
   };
   const cuidarFavicon = () => {                       // repositorio plano: el ícono de la pestaña (assets/logo.webp) tampoco existe → se usa el mismo archivo suelto en la raíz
     const ln = document.querySelector('link[rel~="icon"]');          // (lo que hace el onerror del logo de siempre, que acá no corre porque la cabecera muestra el del evento)
-    const href = ln && ln.getAttribute('href'), m = href && /^(?:[^\/:?#]+\/)+([^\/:?#]+)$/.exec(href);
+    const href = ln && ln.getAttribute('href'), m = href && NOMBRE_DE_ARCHIVO.exec(href);
     if (!m) return;
     const a = new Image();
     a.onerror = () => { const b = new Image(); b.onload = () => ln.setAttribute('href', m[1]); b.src = m[1]; };
@@ -255,6 +299,13 @@ const activeEvent = 'halloween';
 
   const armar = () => {                               // inyecta el decorado; si el mod falla se apaga solo y se retira la API (el interruptor desaparece)
     if (!encendido() || armado) return;
+    if (!registrado && !seccionEnCss().length) {      // evento «solo CSS» que no está en styles.css (error de tipeo en activeEvent, o styles.css todavía sin subir): no se enciende nada
+      if (document.readyState !== 'complete') { addEventListener('load', armar, { once: true }); return; }   // styles.css puede estar terminando de llegar: se mira de nuevo al terminar la carga
+      console.warn('[Z18] Evento desconocido en activeEvent: ' + activeEvent + ' · no hay ninguna sección html[data-evento="' + activeEvent + '"] en styles.css ni una entrada en EVENTS (event-manager.js): no se enciende nada. ¿Error de tipeo?');
+      quitar();
+      retirarAPI();
+      return;
+    }
     armado = true;
     const add = (nodo, padre = document.body, alInicio = false) => { alInicio ? padre.prepend(nodo) : padre.appendChild(nodo); nodes.push(nodo); return nodo; };
     try {
@@ -267,7 +318,7 @@ const activeEvent = 'halloween';
     } catch (e) {
       console.error('[Z18] El evento «' + activeEvent + '» falló y se apagó solo:', e);   // un mod roto nunca rompe la web
       quitar();
-      try { delete window.Z18Events; } catch (e2) { window.Z18Events = undefined; }
+      retirarAPI();
     }
   };
 
@@ -291,7 +342,12 @@ const activeEvent = 'halloween';
     linea(encendido(), encendido()
       ? '<html data-evento="' + activeEvent + '"> está puesto: el evento está encendido'
       : '<html data-evento> no está puesto: el evento está apagado y se ven los logos de siempre. Para prenderlo en esta visita: Z18Events.encender()');
-    if (!mod.logo) linea(false, 'el evento «' + mod.nombre + '» no tiene logo propio (falta logo: en su entrada de EVENTS): no se cambia ningún logo');
+    if (!registrado) {                                // evento «solo CSS»: lo que lo hace valer es su sección de styles.css
+      const hay = seccionEnCss().length > 0;
+      linea(hay, hay ? 'styles.css trae la sección del evento (reglas html[data-evento="' + activeEvent + '"])'
+        : 'styles.css NO trae ninguna regla html[data-evento="' + activeEvent + '"] y activeEvent no tiene entrada en EVENTS: revisá el nombre (¿error de tipeo?) o sumá la sección del evento');
+      lineas.push('· «' + nombreDe() + '» no tiene logo propio: un evento solo con la sección de styles.css no cambia ningún logo (para tener uno, sumá `logo` en una entrada de EVENTS)');
+    } else if (!mod.logo) linea(false, 'el evento «' + nombreDe() + '» no tiene logo propio (falta logo: en su entrada de EVENTS): no se cambia ningún logo');
     LOGO_EN.forEach(sel => {
       const els = Array.prototype.slice.call(document.querySelectorAll(sel)), imgs = els.filter(el => el.tagName === 'IMG');
       informe.selectores.push({ selector: sel, elementos: els.length, imagenes: imgs.length });
@@ -309,7 +365,7 @@ const activeEvent = 'halloween';
       if (intento > 0) linea(false, 'se está usando la ruta alternativa «' + RUTAS[intento] + '» porque «' + mod.logo + '» no cargó: conviene subir el archivo a «' + mod.logo + '»');
       lineas.push('· Ruta configurada (event-manager.js → logo): \'' + mod.logo + '\'' + (RUTAS.length > 1 ? ' · si no está ahí se prueba en la raíz: \'' + RUTAS[1] + '\'' : ''));
     }
-    const cerrar = () => { console.log('[Z18] Diagnóstico del logo del evento «' + mod.nombre + '»\n' + lineas.join('\n')); return informe; };
+    const cerrar = () => { console.log('[Z18] Diagnóstico del logo del evento «' + nombreDe() + '»\n' + lineas.join('\n')); return informe; };
     if (!mod.logo) return Promise.resolve(cerrar());
     informe.servidor = [];
     const revisar = i => consultarLogo(urls[i]).then(c => {       // se consulta la ruta configurada y, solo si no está bien, la siguiente (la raíz)
@@ -322,7 +378,7 @@ const activeEvent = 'halloween';
 
   /* API pública (la usa el interruptor de «Mi cuenta» en app.js y la consola) */
   window.Z18Events = {
-    activo: activeEvent, nombre: mod.nombre, emoji: mod.emoji || '', logo: mod.logo || '', logoEn: LOGO_EN.slice(),
+    activo: activeEvent, get nombre() { return nombreDe(); }, get emoji() { return emojiDe(); }, logo: mod.logo || '', logoEn: LOGO_EN.slice(),
     get encendido() { return encendido(); },
     encender, apagar: quitar,                         // solo esta visita
     diagnostico,                                      // revisa por qué se ve (o no) el logo del evento y lo escribe en la consola

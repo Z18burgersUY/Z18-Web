@@ -89,6 +89,29 @@ a:focus-visible { outline: 2px solid rgb(var(--z-gold)); outline-offset: 2px; }
          box-shadow: 0 0 8px 2px rgba(255, 110, 30, .7); animation: rise var(--d) linear infinite; }
 @keyframes rise { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate(30px, -60vh); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .ember { display: none; } html { scroll-behavior: auto; } }
+
+/* Estado del local · «Abierto / Cerramos pronto / Cerrado», en la cabecera. app.js (sección «HORARIO DEL LOCAL») escribe data-estado y los dos textos según la hora de
+   Montevideo; acá solo se pinta. Reserva su alto desde el primer dibujo (visibility, no display): al llenarse no mueve nada. Los colores de estado son variables
+   (más oscuras en el modo claro, para que se lean sobre fondo claro): un evento temático puede redefinirlas, pero el verde / ámbar / rojo no hace falta tocarlos. */
+:root { --estado-abierto: 34 197 94; --estado-pronto: 245 158 11; --estado-cerrado: 248 113 113; }
+[data-theme="light"] { --estado-abierto: 21 128 61; --estado-pronto: 180 83 9; --estado-cerrado: 185 28 28; }
+.estado-local { --estado: 148 163 184; --e-titulo: 1.3rem; --e-detalle: .78rem; --e-renglones: 1; display: flex; align-items: center; gap: .75rem; width: min(100%, 21rem); margin-inline: auto;
+                padding: .5rem 1.15rem .5rem 1rem; border-radius: 1rem; text-align: left; background: var(--z-chip); border: 1px solid rgb(var(--estado) / .55); box-shadow: 0 0 18px -6px rgb(var(--estado) / .55); }
+.estado-local[data-estado=""] { visibility: hidden; }
+.estado-local[data-estado="abierto"] { --estado: var(--estado-abierto); }
+.estado-local[data-estado="pronto"] { --estado: var(--estado-pronto); }
+.estado-local[data-estado="cerrado"] { --estado: var(--estado-cerrado); }
+.estado-punto { flex-shrink: 0; width: .8rem; height: .8rem; border-radius: 50%; background: rgb(var(--estado)); }
+@keyframes estado-pulso { 0% { box-shadow: 0 0 0 0 rgb(var(--estado) / .6); } 70%, 100% { box-shadow: 0 0 0 .6rem rgb(var(--estado) / 0); } }
+@media (prefers-reduced-motion: no-preference) { .estado-local[data-estado="abierto"] .estado-punto { animation: estado-pulso 2.4s ease-out infinite; } }   /* el latido solo va con «Abierto» y sin «reducir movimiento» */
+/* Mide SIEMPRE lo mismo (ancho fijo y alto reservado), vacío o con cualquier texto: al llenarse al cargar o al cambiar de estado no se mueve nada de la página.
+   .estado-textos reserva el alto de un título y --e-renglones renglones de detalle (1; en pantallas angostas 2, porque un detalle largo puede pasar a dos renglones). */
+.estado-textos { display: flex; flex-direction: column; justify-content: center; gap: .25rem; min-height: calc(var(--e-titulo) + .25rem + var(--e-detalle) * 1.25 * var(--e-renglones)); }
+.estado-titulo { font: 400 var(--e-titulo)/1 'Bebas Neue', sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--z-ink); }
+.estado-detalle { font-size: var(--e-detalle); line-height: 1.25; font-weight: 600; color: var(--z-muted); }
+@media (max-width: 359px) { .estado-local { --e-renglones: 2; } }
+@media (max-width: 339px) { .estado-local { --e-titulo: 1.1rem; gap: .6rem; padding-inline: .85rem; } }   /* 320 px (y menos): el título más chico y menos margen para que no pase a dos renglones */
+
 /* Cuenta: un solo eje izquierdo (título, etiquetas, campos, botón y enlaces alineados) */
 .inp { width: 100%; min-height: 3rem; padding: .7rem 1rem; border: 1px solid var(--z-hairline); border-radius: .75rem; background: var(--z-input); color: var(--z-ink); font-size: 16px; }
 .inp-pw { padding-right: 3rem; }
@@ -424,3 +447,51 @@ html[data-evento="halloween"] .btn-fire[data-add]::before, html[data-evento="hal
   background: rgb(var(--hw-noche)); opacity: .3; -webkit-mask: var(--hw-tela-img) top right / contain no-repeat; mask: var(--hw-tela-img) top right / contain no-repeat; }
 html[data-evento="halloween"] .btn-fire[data-add]::before { top: 0; right: 0; }
 html[data-evento="halloween"] .btn-fire[data-add]::after { bottom: 0; left: 0; transform: rotate(180deg); }
+
+/* ═════════════════ PLANTILLA · EVENTO NUEVO (Navidad, Verano, Pascua…) ═════════════════
+   El próximo evento se suma con DOS pasos, sin tocar ninguna lógica: (1) una sección como esta en este archivo y (2) cambiar activeEvent en event-manager.js.
+   Cómo usarla:
+     1. Copiá las líneas que están entre las flechas ▼ y ▲, pegalas ARRIBA de este comentario (debajo de la sección de Halloween) y cambiá NOMBRE por el
+        nombre del evento: en minúsculas, sin espacios ni tildes (navidad, verano, pascua…). Es el mismo nombre que va en activeEvent.
+     2. --evento-nombre y --evento-emoji son lo que dice el interruptor de «Mi cuenta» («🎄 Tema de Navidad»): escribí el emoji tal cual, entre comillas.
+     3. Poné los colores del evento. Los que trae la plantilla son los de siempre de Z18: lo que no cambies queda igual (pegada tal cual no cambia ningún color).
+        · Los acentos son canales RGB separados por espacios («255 85 0»), no #hex ni rgb(): así andan los degradés y las transparencias. Fondos y bordes, en #hex.
+        · --z-fire y --z-fire-deep = el naranja de marca (íconos, precios, bordes, botones) · --z-gold = el dorado (subtítulos, enlaces, foco, puntos, misiones)
+          --z-on-fire = el texto sobre los botones (blanco, o una tinta oscura si el botón es claro) · --campana-* = la campanita de avisos.
+        · Cada color que cambies en el bloque OSCURO cambialo también en el CLARO, algo más oscuro: en modo claro tiene que leerse sobre fondo blanco (contraste AA,
+          4,5 a 1 para texto). Los «-ink», «-line» y «-deep» son las versiones oscuras del dorado y de la estrella para ese modo.
+     4. Opcional: lo que un cambio de color no resuelve (emojis en los títulos con ::before, brillos, detalles en los paneles) se arma como en la sección de
+        Halloween de arriba, siempre colgado de html[data-evento="NOMBRE"].
+     5. Decorado dinámico (copos, murciélagos…) y logo propio no van acá: van en una entrada de EVENTS en event-manager.js (ese archivo lo explica).
+   Los colores del indicador Abierto / Cerrado (--estado-*) no se tocan: verde, ámbar y rojo se entienden en cualquier evento.
+   ▼▼▼ COPIAR DESDE ACÁ ▼▼▼
+html[data-evento="NOMBRE"] {
+  --evento-nombre: "Nombre del evento"; --evento-emoji: "🎉";
+
+  --z-bg: #0a0b0d; --z-bg2: #12141a; --z-hero1: #1a1510;
+  --z-card: #161820; --z-input: #0e1014; --z-chip: #1f222e;
+  --z-border: #27272a; --z-hairline: #3f4454;
+  --z-muted: #e2e8f0; --z-muted2: #94a3b8;
+
+  --z-fire: 255 85 0; --z-fire-deep: 217 56 0;
+  --z-gold: 255 183 0; --z-gold-hi: 255 224 138;
+  --z-amber: 255 122 0; --z-star: 255 183 0;
+  --z-on-fire: 255 255 255;
+  --z-btn-a: var(--z-fire); --z-btn-b: var(--z-fire-deep);
+  --z-glow-a: 255 120 0; --z-glow-b: 255 150 0; --z-glow-c: 255 140 0;
+
+  --campana-badge: #d93800; --campana-badge-tx: #ffffff;
+  --campana-acento: #ff5500; --campana-nuevo: #ffb700; --campana-ico: #ffb700;
+}
+html[data-evento="NOMBRE"][data-theme="light"] {
+  --z-bg: #f7f4ef; --z-bg2: #ffffff; --z-hero1: #fff1e6;
+  --z-card: #ffffff; --z-input: #f3f1ec; --z-chip: #efe9df;
+  --z-border: #e6e0d4; --z-hairline: #d8d0c0;
+  --z-ink: #18140f; --z-muted: #55503f; --z-muted2: #7a7566;
+
+  --z-gold-ink: 180 83 9; --z-gold-line: 217 119 6; --z-gold-deep: 154 74 6;
+  --z-star-ink: 180 83 9; --z-star-line: 217 119 6;
+
+  --campana-nuevo: #d97706; --campana-ico: #b45309;
+}
+   ▲▲▲ HASTA ACÁ ▲▲▲ */

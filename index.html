@@ -100,6 +100,11 @@
     </div>
     <h1 class="glow-text font-display text-4xl tracking-wider sm:text-5xl">Z18 Hamburguesería</h1>
     <p class="mt-1 font-brush text-lg text-gold">Donde la ingeniería culinaria se une con el fuego</p>
+    <!-- Estado del local (Abierto · Cierra pronto · Cerrado, con la hora de Montevideo): lo escribe app.js (sección «HORARIO DEL LOCAL», tabla HORARIO). Ya reserva su alto: al aparecer no mueve nada. Solo informa: nunca bloquea el pedido -->
+    <div id="estadoLocal" class="estado-local mt-4" role="status" aria-live="polite" data-estado="">
+      <span class="estado-punto" aria-hidden="true"></span>
+      <span class="estado-textos"><b id="estadoTitulo" class="estado-titulo"></b><span id="estadoDetalle" class="estado-detalle"></span></span>
+    </div>
     <div class="mt-4 flex flex-wrap justify-center gap-2">
       <span class="chip"><svg class="ico text-fire" viewBox="0 0 384 512" aria-hidden="true" focusable="false"><use href="#i-location-dot"/></svg> Paso de la Arena, Montevideo</span>
       <span class="chip"><svg class="ico text-gold" viewBox="0 0 640 512" aria-hidden="true" focusable="false"><use href="#i-motorcycle"/></svg> Delivery rápido</span>
