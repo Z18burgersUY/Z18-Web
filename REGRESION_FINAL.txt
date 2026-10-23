@@ -1,0 +1,61 @@
+REGRESIÓN FINAL · entrega 11 · fotos con carga diferida (una por archivo) + checklist final de integración y deploy en Vercel · 23/10/2026
+
+ARCHIVOS DE ESTA ENTREGA (reemplazan a los de GitHub; son los de dist/ tal cual, md5 verificado antes y después de correr todo)
+  app.js          CAMBIA (157 KB, md5 1284f4bf…): las fotos se piden una por una, solo cuando hacen falta (sección «CARGA DE FOTOS»; ajuste: FOTOS_AL_ENTRAR)
+  fotos/          NUEVA CARPETA con 14 archivos, uno por foto (fotos/<nombre>.js), JUNTO a index.html y app.js. Fotos idénticas byte a byte a las de fotos.js.
+  fotos.js        BORRAR del repositorio (ya no se usa)
+  index.html      SIN CAMBIOS (idéntico a la entrega 10, md5 a88f4a1d…)
+  styles.css      SIN CAMBIOS (idéntico a la entrega 10, md5 aeb05ace…)
+  event-manager.js  SIN CAMBIOS (idéntico a la entrega 10, md5 359c9313…)
+  firestore.rules  SIN CAMBIOS (md5 cbe16f4cd08813cdb2aa2d9dc88a7cae): NO hace falta volver a publicarlo en Firebase
+  assets/*        sin cambios
+
+REGRESIÓN (todas contra el mismo dist; md5 de los 21 archivos verificado antes y después)
+  test_main 190 · test_regress 43 · test_economia 93 · test_misiones 173 · test_cmp_misiones 29 · test_eventos 300 · test_logo 43 · test_vaciar 130
+  test_semanales 273 · test_historial 185 · test_pedidos_fav 145 · test_avisos 378 · test_halloween 142 · test_menu 185 · test_horario 325 · test_evento_nuevo 180
+  test_rendimiento 157 (REESCRITA para la carga una-foto-por-archivo; antes 100) · NUEVA test_integracion_final 170
+  TOTAL: 18 suites, 3.141 comprobaciones, 0 fallas.
+  reglas: rules_selftest 42 · test_rules 203 (y 203 en el peor caso por nombre) · fuzz semanal y general 200.000 casos cada uno: 0 sin explicar, 0 invariantes violados
+  Las 16 suites anteriores a esta entrega (todas menos test_rendimiento y test_integracion_final) están byte a byte como estaban: ninguna expectativa se tocó.
+  ÚNICO cambio del banco de pruebas que afecta a las viejas: t/h.py ahora acepta fotos='todas' (por defecto) o fotos='lazy'. Con 'todas', las 14 fotos están puestas
+  antes de app.js (como si estuvieran escritas en el HTML), que es lo que esas suites daban por hecho cuando las fotos viajaban juntas; la carga real —una foto por
+  archivo— la prueban test_rendimiento y test_integracion_final con fotos='lazy'.
+
+LA CARGA DIFERIDA (lo que pediste)
+  · Al entrar: solo las fotos de FOTOS_AL_ENTRAR = ['milas', 'promos'] (Milanesas al plato y Súper Promos; baja prioridad; nada con «Ahorro de datos») + lo que ya está a la vista.
+    Celu de 390 px: napo1, napo2, milanesa-cheddar + z18 (la 1ª hamburguesa, a la vista). Compu 1280×800: suma clasica. Tablet 768×1024: suma z18, clasica, smash, bunker.
+    Las promos y las bebidas usan fotos de stock (Unsplash), no las de fotos/: las 2 promos se anticipan igual (prioridad baja); las bebidas las trae el navegador al acercarse.
+  · El resto, a medida que se baja: cuando la foto está a 400 px de entrar en pantalla y se queda 250 ms. Un salto con los chips (ej. a «Pizzetas») pide solo lo que cae ahí.
+  · «Mi cuenta»: las fotos de Recompensas Z y la favorita se piden al bajar por el panel (nunca con el panel cerrado).
+  · Una foto repetida (z18 está en Hamburguesas, Combos, Reclutas y Recompensas) se pide UNA vez y aparece en todas sus tarjetas. Sin saltos de diseño (CLS 0): la tarjeta ya reserva su lugar.
+  · Si un archivo falla: reintenta a los 4 y 8 s, avisa UNA vez por consola (con una pista de qué revisar) y la web sigue entera; al volver a pasar por esa foto, 30 s después, lo intenta otra vez.
+  · Probado en test_rendimiento (157): qué se pide al entrar (celu / tablet / compu), qué NO se pide, un solo pedido por foto, chips, «Mi cuenta», Ahorro de datos, nombres mal escritos
+    en FOTOS_AL_ENTRAR, 404 / corte / archivo vacío / foto que falta / se cae una vez, DOM idéntico al de la versión estática, CLS 0.
+
+CHECKLIST DE INTEGRACIÓN Y DEPLOY · test_integracion_final (170)
+  1) Archivos y enlaces: todo lo que index.html, styles.css, app.js y event-manager.js piden existe en la carpeta que se sube; fotos/ = las 14 fotos de app.js (ni una más ni una menos);
+     cada archivo es UNA asignación con un WebP válido; nada nombra al fotos.js viejo; event-manager.js en el <head>, app.js último script; firestore.rules intacto (md5).
+  2) Carga real (una foto por archivo) en 7 escenarios: celu chico 320×568, celu 390×844, tablet, compu × Halloween prendido/apagado × oscuro/claro: sin errores ni avisos en consola,
+     ningún 404, cada foto pedida UNA vez, las 14 llegan al recorrer la carta, sin scroll horizontal.
+  3) Los 4 archivos juntos: los 88 ids que busca app.js existen (3 botones del cartel de misiones nacen al abrirlo); el evento se apaga y se prende desde «Mi cuenta» con los 3 logos.
+  4) Carrito → WhatsApp con las fotos todavía sin cargar: 2 × Z18 Original + milanesa + bebida + extra = $1.378; «+» / «−»; persiste al recargar; oferta; mensaje exacto; vaciar.
+  5) Horarios (dom / mié / jue 20:00–23:00 · vie / sáb 20:00–00:00 · lun / mar cerrado) = pie = cabecera: cálculo independiente armado solo con tu lista, 84 instantes (cada día,
+     00:00 · 19:59:59 · 20:00 · 22:30 · 23:00 · 23:30 · 23:59:59…), 5 husos horarios del celular (Montevideo, UTC, Tokio, Nueva York, Auckland) y con el reloj corriendo
+     (jueves 22:29 → sábado 00:01: «Cerramos pronto», cerrado, «mañana» pasa a «hoy» a medianoche, abre, «Cerramos pronto» otra vez, cierra).
+  6) Reloj de Montevideo ↔ reglas de Firestore: las constantes de semana (1704078000000 + semana × 604800000) son las mismas en app.js y en firestore.rules; el lunes 00:00 cambia la semana.
+  7) Servidor HTTP real (como Vercel: tipos MIME, nosniff, gzip, 404 de verdad): las 14 fotos responden 200 como JavaScript, el logo carga, cero errores.
+
+MEDICIÓN (celular emulado de 390 px, Chromium, CPU 4× lenta, servido con gzip como Vercel; mediana de 7 cargas; ANTES = entrega 10 con fotos.js de 2 MB)
+  escenario            ANTES: Milanesas / carga completa / KB al entrar     DESPUÉS: Milanesas / carga completa / KB al entrar
+  CPU 4×               1,39 s / 1,80 s / 1.709 KB                           1,48 s / 1,74 s / 727 KB
+  4G + CPU 4×          2,77 s / 3,00 s / 1.709 KB                           1,91 s / 2,21 s / 727 KB
+  3G lenta + CPU 4×    9,59 s / 9,85 s / 1.649 KB                           4,49 s / 4,76 s / 667 KB
+  Primera hamburguesa con foto: 4G 2,77 → 2,43 s · 3G lenta 9,59 → 4,69 s.  Foto de «Minutas» al saltar con el chip: 4G 0,8 s · 3G lenta 2,3 s.
+  Menú dibujado, FCP y LCP (lo marca el logo de la cabecera): prácticamente iguales (±0,2 s, dentro del ruido). CLS 0 en todos. Memoria: 2,6 → 2,8–3,5 MB.
+  Al recorrer TODA la carta se bajan las mismas 14 fotos que antes: lo que se ahorra es lo que la persona no llega a ver.
+  PROBADO Y DESCARTADO: pedir sin espera lo que ya está a la vista al entrar. Pedía fotos de más mientras la página todavía se acomodaba (+280 KB y +1 s en 3G lenta): la espera de 250 ms también sirve para eso.
+
+LECTURA HONESTA
+  · Una foto de más abajo llega cuando la persona se acerca (en 3G lenta, unos 2 s), en vez de estar ya cargada. Es el precio de no bajar 2 MB al entrar.
+  · Siguen pendientes de tu aprobación (no se hicieron): recomprimir las fotos (hoy 45–227 KB cada una) y reemplazar Tailwind por CDN por un CSS propio. La consola de la web publicada
+    seguirá mostrando el aviso amarillo «cdn.tailwindcss.com should not be used in production»: es de Tailwind, no de esta entrega.

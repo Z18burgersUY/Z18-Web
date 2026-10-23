@@ -3,7 +3,7 @@ const WA = '59892061753'; // +598 92 061 753
 const CONTACT = 'z18.burgers.uy@gmail.com'; // correo oficial de contacto y soporte
 
 // Fotos de stock (Unsplash). Para usar tus renders: poné una ruta o URL completa, p. ej. IMG.bacon = 'img/original.jpg'
-// Las fotos reales de Z18 valen 'foto:nombre': están en fotos.js (Base64) y se cargan DESPUÉS de dibujar el menú (ver «FOTOS DE Z18», más abajo).
+// Las fotos reales de Z18 valen 'foto:nombre': cada una está en su propio archivo, fotos/<nombre>.js (Base64), y se pide sola cuando hace falta (ver «FOTOS DE Z18», más abajo).
 const IMG = {
   // Fotos reales de Z18: papas y pizzas del menú y de las Recompensas Z. La clave es el nombre del archivo sin extensión.
   'papas-cheddar': 'foto:papas-cheddar',
@@ -76,6 +76,10 @@ const MENU = {
   extras: [['Medallón extra (100 g)', 60], ['Huevo frito', 30], ['Bacon crocante', 40], ['Queso cheddar', 40]]
 };
 
+// ✏️ Fotos que se piden APENAS se dibuja el menú, aunque todavía no se vean: son secciones de MENU (milas = Milanesas al plato, promos = Súper Promos).
+// Las de todas las demás secciones se piden solas cuando se acercan a la pantalla. Con [] todo se pide al hacer scroll (la entrada más liviana posible). Ver «CARGA DE FOTOS».
+const FOTOS_AL_ENTRAR = ['milas', 'promos'];
+
 /* ================= 2) UTILIDADES ================= */
 const $ = id => document.getElementById(id);
 const money = n => '$' + n.toLocaleString('es-UY');
@@ -102,19 +106,19 @@ const lock = open => [...document.body.children].forEach(el => { if (!PANELS.inc
 const key = (n, p) => (PRICE[n] = p, encodeURIComponent(n));
 
 /* ---------- FOTOS DE Z18 ----------
-   Las fotos reales pesan ~2 MB en Base64. Si fueran parte de app.js, el menú esperaría a que bajen TODAS antes de dibujarse (y cada cambio de precio obligaría a bajarlas de nuevo).
-   Por eso viven en fotos.js, un archivo aparte que se pide justo después de dibujar el menú:
-   · IMG['clasica'] vale 'foto:clasica' → hasta que llega fotos.js, imgUrl() devuelve un GIF transparente de 1×1 con el nombre de la foto después del «#»: la tarjeta muestra su fondo
+   Las 14 fotos reales pesan ~2 MB en Base64. Si fueran parte de app.js, el menú esperaría a que bajen TODAS antes de dibujarse (y cada cambio de precio obligaría a bajarlas de nuevo).
+   Por eso cada una vive en su propio archivo, fotos/<nombre>.js, y se pide SOLA, recién cuando hace falta (ver «CARGA DE FOTOS», más abajo):
+   · IMG['clasica'] vale 'foto:clasica' → hasta que llega fotos/clasica.js, imgUrl() devuelve un GIF transparente de 1×1 con el nombre de la foto después del «#»: la tarjeta muestra su fondo
      y ocupa el mismo lugar de siempre (sin saltos de diseño), y photo() no necesita saber nada.
-   · fotos.js define window.Z18_FOTOS = { nombre: 'data:image/webp;base64,…' }; al llegar, pintarFotos() cambia ese GIF por la foto real en cada <img> que lo esté esperando
+   · fotos/clasica.js hace window.Z18_FOTOS['clasica'] = 'data:image/webp;base64,…'; al llegar, pintarFoto() cambia ese GIF por la foto real en cada <img> que lo esperaba
      (las que se dibujen después ya salen con su foto). El <img> queda igual que si la foto hubiera estado desde el principio.
-   · Si fotos.js no está (no se subió junto con app.js) o no hay conexión: el menú funciona igual, sin esas fotos, y la consola explica qué pasó. */
-let fotos = window.Z18_FOTOS || null;                                               // { nombre: 'data:image/webp;base64,…' } cuando llegó fotos.js (si ya estaba, las fotos salen con su src desde el primer dibujo)
-const FOTO_PENDIENTE = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';   // GIF transparente de 1×1: el src de una foto de fotos.js que todavía no llegó
-const fotoDe = k => { const v = IMG[k]; return typeof v === 'string' && v.startsWith('foto:') ? v.slice(5) : ''; };   // 'clasica' → 'clasica'; '' si no es una foto de fotos.js
+   · Si un archivo no está (no se subió la carpeta fotos/ junto con app.js) o no hay conexión: el menú funciona igual, sin esa foto, y la consola explica qué pasó. */
+const FOTO_PENDIENTE = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';   // GIF transparente de 1×1: el src de una foto de fotos/ que todavía no llegó
+const fotoDe = k => { const v = IMG[k]; return typeof v === 'string' && v.startsWith('foto:') ? v.slice(5) : ''; };   // 'clasica' → 'clasica'; '' si no es una foto de fotos/
+const hayFoto = f => { const o = window.Z18_FOTOS; return o && typeof o[f] === 'string' ? o[f] : ''; };            // ya llegó → 'data:image/webp;base64,…' (si el archivo estaba puesto antes de app.js, desde el primer dibujo); si no, ''
 const imgUrl = k => {
   const f = fotoDe(k);
-  if (f) return (fotos && fotos[f]) || `${FOTO_PENDIENTE}#${f}`;                    // todavía no llegó fotos.js (o no trae esa foto): el GIF, con su nombre
+  if (f) return hayFoto(f) || `${FOTO_PENDIENTE}#${f}`;                             // todavía no llegó su archivo: el GIF, con su nombre
   const v = IMG[k] || k || '';
   return /^(https?:)?\/|^\.|^data:/.test(v) ? v : `https://images.unsplash.com/photo-${v}?auto=format&fit=crop&w=800&q=75`;
 };
@@ -261,28 +265,60 @@ fill('minutasGrid', MENU.minutas, card);
 fill('drinksGrid', MENU.drinks, card);
 fill('extrasList', MENU.extras, row);
 
-// Con el menú ya dibujado se pide fotos.js (ver «FOTOS DE Z18»): con prioridad baja, para no competir con lo que la persona está viendo. Si falla, reintenta dos veces (4 y 8 segundos después).
-const pintarFotos = () => document.querySelectorAll(`img[src^="${FOTO_PENDIENTE}#"]`).forEach(i => { const u = fotos[i.getAttribute('src').slice(FOTO_PENDIENTE.length + 1)]; if (u) i.src = u; });
-const cargarFotos = (intento = 1) => {
+/* ---------- CARGA DE FOTOS ----------
+   Con el menú ya dibujado (ver «FOTOS DE Z18»):
+   1) se piden las fotos de FOTOS_AL_ENTRAR, con prioridad baja para no competir con lo que la persona está viendo (con el «ahorro de datos» del celular encendido, ninguna);
+   2) cada <img> que espera su foto se vigila: cuando se acerca a la pantalla (a 400 px de entrar) y sigue ahí 250 ms, se pide su archivo. Así un salto largo con los chips del menú
+      no baja lo que pasa de largo. Las <img> que se dibujen después (Recompensas Z, la favorita de «Mi cuenta») se anotan solas; las de un panel cerrado se piden recién al abrirlo
+      (y las de «Mi cuenta», a medida que se baja por el panel);
+   3) una foto que se repite (la del Z18 Original está en Hamburguesas, Combos, Reclutas y Recompensas) se pide UNA vez y aparece en todas sus tarjetas a la vez;
+   4) si un archivo falla se reintenta dos veces (4 y 8 segundos después) y avisa UNA vez por consola; si la persona vuelve a pasar por esa foto 30 s más tarde, lo intenta de nuevo. */
+const FOTO_ESPERA_MS = 250, FOTO_ANTICIPO = '400px 0px', FOTO_REINTENTO_MS = 30000;
+const PENDIENTES = `img[src^="${FOTO_PENDIENTE}#"]`;                                    // las <img> que esperan su foto
+const nombreDe = img => (img.getAttribute('src') || '').slice(FOTO_PENDIENTE.length + 1);   // el nombre que imgUrl() dejó después del «#»
+const fotoEstado = {};                                                                  // nombre → 'pidiendo' · { fallo: instante } (la que ya llegó no figura: está en window.Z18_FOTOS)
+const esperando = new Map();                                                            // <img> → temporizador: se pide su foto si sigue cerca de la pantalla pasado FOTO_ESPERA_MS
+const alVer = es => es.forEach(e => {
+  const i = e.target;
+  clearTimeout(esperando.get(i)); esperando.delete(i);
+  if (e.isIntersecting) esperando.set(i, setTimeout(() => { esperando.delete(i); if (i.isConnected && i.matches(PENDIENTES)) pedirFoto(nombreDe(i)); }, FOTO_ESPERA_MS));
+});
+const vigia = new IntersectionObserver(alVer, { rootMargin: FOTO_ANTICIPO });          // el mismo recurso que usa la barra de navegación (sección 6): la pantalla es el marco
+const vigiaCuenta = new IntersectionObserver(alVer, { root: $('auth'), rootMargin: FOTO_ANTICIPO });   // «Mi cuenta» se desplaza por dentro: ahí los 400 px se miden contra el panel (y mientras está cerrado no se pide nada)
+const vigiaDe = img => (img.closest('#auth') ? vigiaCuenta : vigia);
+const pintarFoto = f => { const u = hayFoto(f); if (u) document.querySelectorAll(PENDIENTES).forEach(i => { if (nombreDe(i) === f) { i.src = u; vigia.unobserve(i); vigiaCuenta.unobserve(i); } }); };
+const pedirFoto = (f, prioridad = '', intento = 1) => {
+  if (!/^[\w-]+$/.test(f)) return console.error(`[Z18] «${f}» no sirve como nombre de foto: usá solo letras, números y guiones en el nombre de la foto.`);
+  if (hayFoto(f)) return pintarFoto(f);                                                 // ya estaba (llegó antes, o se puso a mano en el HTML)
+  const e = fotoEstado[f];
+  if (intento === 1 && e && (e === 'pidiendo' || performance.now() - e.fallo < FOTO_REINTENTO_MS)) return;   // ya viene en camino, o falló hace poco
+  fotoEstado[f] = 'pidiendo';
   const s = document.createElement('script');
-  s.src = 'fotos.js'; s.fetchPriority = 'low';
+  s.src = `fotos/${f}.js`; if (prioridad) s.fetchPriority = prioridad;
   s.onload = () => {
     s.remove();
-    const f = window.Z18_FOTOS;
-    if (f && typeof f === 'object') {
-      fotos = f; pintarFotos();
-      const faltan = Object.keys(IMG).filter(k => fotoDe(k) && !f[fotoDe(k)]);          // app.js nombra fotos que este fotos.js no trae (se subió uno de otra versión)
-      if (faltan.length) console.warn('[Z18] fotos.js no trae estas fotos: ' + faltan.join(', ') + ' · volvé a subir el fotos.js que viene con esta versión de app.js.');
-    } else console.error('[Z18] fotos.js cargó pero no define window.Z18_FOTOS: no se van a ver las fotos reales de Z18. Volvé a subir el fotos.js que viene con esta versión.');
+    if (hayFoto(f)) { delete fotoEstado[f]; pintarFoto(f); }
+    else { fotoEstado[f] = { fallo: performance.now() }; console.error(`[Z18] fotos/${f}.js cargó pero no trae la foto «${f}»: no se va a ver. Volvé a subir el fotos/${f}.js que viene con esta versión de app.js.`); }
   };
   s.onerror = () => {
     s.remove();
-    if (intento < 3) setTimeout(() => cargarFotos(intento + 1), intento * 4000);
-    else console.error('[Z18] No se pudo cargar fotos.js: el menú funciona, pero sin las fotos reales de Z18. ¿Está subido al mismo lugar que app.js? ¿Hay conexión?');
+    if (intento < 3) setTimeout(() => pedirFoto(f, prioridad, intento + 1), intento * 4000);
+    else { fotoEstado[f] = { fallo: performance.now() }; console.error(`[Z18] No se pudo cargar fotos/${f}.js: el menú funciona, pero sin esa foto. ¿Está subida la carpeta «fotos» al mismo lugar que app.js? ¿Hay conexión?`); }
   };
   document.head.appendChild(s);
 };
-if (!fotos) cargarFotos();
+const mirar = nodo => { if (nodo.matches(PENDIENTES)) vigiaDe(nodo).observe(nodo); nodo.querySelectorAll(PENDIENTES).forEach(i => vigiaDe(i).observe(i)); };
+mirar(document.body);                                                                   // las del menú, que ya está dibujado…
+new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) mirar(n); }))).observe(document.body, { childList: true, subtree: true });   // …y las que se dibujen después
+// Una imagen de stock (Unsplash) o con URL propia no viene de fotos/: la pide el navegador (con loading="lazy"). Si su sección está en FOTOS_AL_ENTRAR también se pide ya, y el <img> la reutiliza de la caché.
+const precargas = new Map();
+const precargarUrl = url => { if (precargas.has(url)) return; const i = new Image(); i.fetchPriority = 'low'; i.src = url; precargas.set(url, i); };
+try {
+  if (!(navigator.connection && navigator.connection.saveData)) (Array.isArray(FOTOS_AL_ENTRAR) ? FOTOS_AL_ENTRAR : []).forEach(sec => {
+    if (!Array.isArray(MENU[sec])) return console.warn(`[Z18] FOTOS_AL_ENTRAR: «${sec}» no es una sección de MENU (las hay: ${Object.keys(MENU).filter(k => Array.isArray(MENU[k])).join(', ')}).`);
+    MENU[sec].forEach(it => { const f = it && fotoDe(it.im); if (f) pedirFoto(f, 'low'); else if (it && it.im) precargarUrl(imgUrl(it.im)); });
+  });
+} catch (err) { console.error('[Z18] No se pudieron pedir las fotos de entrada:', err); }
 
 // Mapa producto -> categoría de MENU (para saber si el carrito ya tiene "papas")
 const CATEGORY_OF = {};
