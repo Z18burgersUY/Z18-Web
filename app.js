@@ -112,7 +112,8 @@ const key = (n, p) => (PRICE[n] = p, encodeURIComponent(n));
      y ocupa el mismo lugar de siempre (sin saltos de diseño), y photo() no necesita saber nada.
    · fotos/clasica.js hace window.Z18_FOTOS['clasica'] = 'data:image/webp;base64,…'; al llegar, pintarFoto() cambia ese GIF por la foto real en cada <img> que lo esperaba
      (las que se dibujen después ya salen con su foto). El <img> queda igual que si la foto hubiera estado desde el principio.
-   · Si un archivo no está (no se subió la carpeta fotos/ junto con app.js) o no hay conexión: el menú funciona igual, sin esa foto, y la consola explica qué pasó. */
+   · ¿Dónde se busca? Primero en la carpeta fotos/ y, si ahí no está, SUELTA en la raíz del sitio (fotos/clasica.js o clasica.js): así también anda un repositorio sin carpetas (como el logo, que se
+     busca en assets/ y, si no, en la raíz). Si no está en ninguno de los dos lugares, o no hay conexión: el menú funciona igual, sin esa foto, y la consola dice qué URLs probó. */
 const FOTO_PENDIENTE = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';   // GIF transparente de 1×1: el src de una foto de fotos/ que todavía no llegó
 const fotoDe = k => { const v = IMG[k]; return typeof v === 'string' && v.startsWith('foto:') ? v.slice(5) : ''; };   // 'clasica' → 'clasica'; '' si no es una foto de fotos/
 const hayFoto = f => { const o = window.Z18_FOTOS; return o && typeof o[f] === 'string' ? o[f] : ''; };            // ya llegó → 'data:image/webp;base64,…' (si el archivo estaba puesto antes de app.js, desde el primer dibujo); si no, ''
@@ -272,8 +273,12 @@ fill('extrasList', MENU.extras, row);
       no baja lo que pasa de largo. Las <img> que se dibujen después (Recompensas Z, la favorita de «Mi cuenta») se anotan solas; las de un panel cerrado se piden recién al abrirlo
       (y las de «Mi cuenta», a medida que se baja por el panel);
    3) una foto que se repite (la del Z18 Original está en Hamburguesas, Combos, Reclutas y Recompensas) se pide UNA vez y aparece en todas sus tarjetas a la vez;
-   4) si un archivo falla se reintenta dos veces (4 y 8 segundos después) y avisa UNA vez por consola; si la persona vuelve a pasar por esa foto 30 s más tarde, lo intenta de nuevo. */
+   4) cada foto se busca en fotos/ y, si no está, suelta en la raíz (FOTO_LUGARES); el lugar que funcionó se prueba primero en las siguientes. Si no está en ninguno se reintenta dos veces
+      (4 y 8 segundos después) y avisa UNA vez por consola, con las dos URLs que probó; si la persona vuelve a pasar por esa foto 30 s más tarde, lo intenta de nuevo. */
 const FOTO_ESPERA_MS = 250, FOTO_ANTICIPO = '400px 0px', FOTO_REINTENTO_MS = 30000;
+const FOTO_LUGARES = ['fotos/', ''];                                                    // dónde se busca cada foto: la carpeta «fotos» y, si ahí no está, SUELTA en la raíz del sitio (repositorio sin carpetas)
+let fotoLugar = 0, fotoAvisoRaiz = false;                                               // el lugar que funcionó la última vez (se prueba primero) · el aviso «están en la raíz» se da UNA sola vez
+const urlFoto = (f, lugar) => new URL(`${FOTO_LUGARES[lugar]}${f}.js`, document.baseURI).href;   // la dirección completa, para que la consola no deje dudas de qué se pidió
 const PENDIENTES = `img[src^="${FOTO_PENDIENTE}#"]`;                                    // las <img> que esperan su foto
 const nombreDe = img => (img.getAttribute('src') || '').slice(FOTO_PENDIENTE.length + 1);   // el nombre que imgUrl() dejó después del «#»
 const fotoEstado = {};                                                                  // nombre → 'pidiendo' · { fallo: instante } (la que ya llegó no figura: está en window.Z18_FOTOS)
@@ -287,23 +292,27 @@ const vigia = new IntersectionObserver(alVer, { rootMargin: FOTO_ANTICIPO });   
 const vigiaCuenta = new IntersectionObserver(alVer, { root: $('auth'), rootMargin: FOTO_ANTICIPO });   // «Mi cuenta» se desplaza por dentro: ahí los 400 px se miden contra el panel (y mientras está cerrado no se pide nada)
 const vigiaDe = img => (img.closest('#auth') ? vigiaCuenta : vigia);
 const pintarFoto = f => { const u = hayFoto(f); if (u) document.querySelectorAll(PENDIENTES).forEach(i => { if (nombreDe(i) === f) { i.src = u; vigia.unobserve(i); vigiaCuenta.unobserve(i); } }); };
-const pedirFoto = (f, prioridad = '', intento = 1) => {
+const pedirFoto = (f, prioridad = '', intento = 1, probados = 0) => {                   // probados = en cuántos FOTO_LUGARES ya no estaba en este intento
   if (!/^[\w-]+$/.test(f)) return console.error(`[Z18] «${f}» no sirve como nombre de foto: usá solo letras, números y guiones en el nombre de la foto.`);
   if (hayFoto(f)) return pintarFoto(f);                                                 // ya estaba (llegó antes, o se puso a mano en el HTML)
   const e = fotoEstado[f];
-  if (intento === 1 && e && (e === 'pidiendo' || performance.now() - e.fallo < FOTO_REINTENTO_MS)) return;   // ya viene en camino, o falló hace poco
+  if (!probados && intento === 1 && e && (e === 'pidiendo' || performance.now() - e.fallo < FOTO_REINTENTO_MS)) return;   // ya viene en camino, o falló hace poco
   fotoEstado[f] = 'pidiendo';
+  const lugar = (fotoLugar + probados) % FOTO_LUGARES.length;
   const s = document.createElement('script');
-  s.src = `fotos/${f}.js`; if (prioridad) s.fetchPriority = prioridad;
+  s.src = `${FOTO_LUGARES[lugar]}${f}.js`; if (prioridad) s.fetchPriority = prioridad;
   s.onload = () => {
     s.remove();
-    if (hayFoto(f)) { delete fotoEstado[f]; pintarFoto(f); }
-    else { fotoEstado[f] = { fallo: performance.now() }; console.error(`[Z18] fotos/${f}.js cargó pero no trae la foto «${f}»: no se va a ver. Volvé a subir el fotos/${f}.js que viene con esta versión de app.js.`); }
+    if (hayFoto(f)) {
+      delete fotoEstado[f]; fotoLugar = lugar; pintarFoto(f);
+      if (lugar && !fotoAvisoRaiz) { fotoAvisoRaiz = true; console.warn(`[Z18] Las fotos se cargan sueltas desde la raíz del sitio (${s.src}) porque no existe la carpeta «fotos». Funciona, pero lo ordenado es subirlas a una carpeta «fotos» del repositorio, junto a app.js.`); }
+    } else { fotoEstado[f] = { fallo: performance.now() }; console.error(`[Z18] ${s.src} cargó pero no trae la foto «${f}»: no se va a ver. Volvé a subir el archivo ${f}.js que viene con esta versión de app.js.`); }
   };
   s.onerror = () => {
     s.remove();
+    if (probados + 1 < FOTO_LUGARES.length) return pedirFoto(f, prioridad, intento, probados + 1);   // ahí no estaba: se prueba el otro lugar enseguida
     if (intento < 3) setTimeout(() => pedirFoto(f, prioridad, intento + 1), intento * 4000);
-    else { fotoEstado[f] = { fallo: performance.now() }; console.error(`[Z18] No se pudo cargar fotos/${f}.js: el menú funciona, pero sin esa foto. ¿Está subida la carpeta «fotos» al mismo lugar que app.js? ¿Hay conexión?`); }
+    else { fotoEstado[f] = { fallo: performance.now() }; console.error(`[Z18] No se pudo cargar la foto «${f}»: no está en ${urlFoto(f, 0)} ni en ${urlFoto(f, 1)}. El menú funciona, pero sin esa foto. ¿Está subida la carpeta «fotos» —o los archivos sueltos— junto a app.js? ¿Hay conexión?`); }
   };
   document.head.appendChild(s);
 };
