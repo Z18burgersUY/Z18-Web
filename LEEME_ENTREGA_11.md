@@ -1,4 +1,4 @@
-# Entrega 11 · Fotos con carga diferida + checklist final de integración y deploy (23/10/2026)
+# Actualizacion 11 · Fotos con carga diferida + checklist final de integración y deploy (23/10/2026)
 
 ## Qué cambió
 
