@@ -386,15 +386,17 @@ const count = () => Object.values(cart).reduce((a, b) => a + b, 0);
 const total = () => Object.entries(cart).reduce((s, [n, q]) => s + PRICE[n] * q, 0);
 
 // Mensaje automático con el resumen del pedido
-const orderText = () => {
-  const note = $('note').value.trim();
-  const who = user ? `Soy ${user.name}${user.phone ? ' (' + user.phone + ')' : ''}. ` : '';
+// ref (opcional): el código de 4 letras con el que el pedido quedó en la pantalla de cocina → «Pedido N° ABCD» al final del mensaje
+const orderText = ref => {
+  const note = $('note').value.trim(), d = datosEntrega();
+  const who = d.nombre ? `Soy ${d.nombre}${d.telefono ? ' (' + d.telefono + ')' : ''}. ` : '';
   const prefs = user && (paymentMethod || kitchenNotes)
     ? '\n\n' + [paymentMethod && `Método de pago preferido: ${paymentMethod}`, kitchenNotes && `Notas de cocina: ${kitchenNotes}`].filter(Boolean).join('\n')
     : '';
+  const dest = d.tipo === 'retiro' ? '\n\nRetiro en el local' : d.tipo === 'delivery' && d.direccion ? `\n\nDelivery a: ${d.direccion}` : '';
   return `¡Hola Z18! ${who}Quiero hacer este pedido:\n\n`
     + Object.entries(cart).map(([n, q]) => `• ${q} x ${n} — ${money(PRICE[n] * q)}`).join('\n')
-    + `\n\nTotal: ${money(total())} (envío a coordinar)` + (note ? `\n\nAclaraciones: ${note}` : '') + prefs;
+    + `\n\nTotal: ${money(total())}${d.tipo === 'retiro' ? '' : ' (envío a coordinar)'}` + dest + (note ? `\n\nAclaraciones: ${note}` : '') + prefs + (ref ? `\n\nPedido N° ${ref}` : '');
 };
 const updateSend = () => { $('send').href = count() ? waRaw(orderText()) : '#'; };
 
@@ -420,6 +422,7 @@ const renderCart = () => {
   $('badge').classList.toggle('grid', !!c);
   $('sub').textContent = $('total').textContent = money(total());
   $('clear').hidden = !c;
+  $('cartDatos').hidden = !c;                         // sin productos no hay datos de entrega que pedir
   $('send').classList.toggle('opacity-40', !c);
   $('send').classList.toggle('pointer-events-none', !c);
   $('send').setAttribute('aria-disabled', String(!c));
@@ -472,12 +475,77 @@ const setCart = open => {
   $('overlay').classList.toggle('hidden', !open);
   lock(open);
   document.body.style.overflow = open ? 'hidden' : '';
+  if (open) {
+    cargarEntrega();                                  // nombre, teléfono y entrega: lo último que se usó en este dispositivo o los datos de la cuenta
+    try { if (count() && window.Z18Cocina) window.Z18Cocina.calentar(); } catch (e) {}   // deja lista la conexión con la cocina: al tocar «Enviar» el pedido sale al instante, antes de que el celular salte a WhatsApp
+  }
   (open ? $('cartClose') : $('cartBtn')).focus();
 };
 $('cartBtn').onclick = () => setCart(true);
 $('cartClose').onclick = $('overlay').onclick = () => setCart(false);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('cart').inert && $('clearModal').classList.contains('hidden')) setCart(false); });
 $('note').addEventListener('input', updateSend);
+
+/* ── DATOS DE ENTREGA ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Lo que la cocina necesita para preparar y entregar el pedido: retiro o delivery (con dirección), nombre y teléfono. Son obligatorios.
+   Se rellenan solos con lo último que se usó en este dispositivo (localStorage z18_pedido) o con los datos de la cuenta, y se borran al cerrar sesión.
+   Van en el mensaje de WhatsApp y, con cocina.js, también a la pantalla de cocina (admin.html). Los límites son los mismos que valida firestore.rules. */
+const ENT_KEY = 'z18_pedido', ENT_MIN_DIRECCION = 5;
+const ENT_CAMPOS = ['tipo', 'nombre', 'telefono', 'direccion'];
+const ENT_ID = { tipo: 'entTipo', nombre: 'entNombre', telefono: 'entTelefono', direccion: 'entDireccion' };
+const ENT_MSG = {
+  tipo: 'Elegí cómo querés recibir tu pedido.',
+  nombre: 'Escribí tu nombre (mínimo 2 letras).',
+  telefono: 'Escribí un teléfono válido, por ejemplo 099 123 456.',
+  direccion: 'Escribí la dirección de entrega: calle, número y esquina o referencia.'
+};
+const entRadio = () => document.querySelector('input[name="entTipo"]:checked');
+const limpioEnt = t => String(t == null ? '' : t).replace(/\s+/g, ' ').trim();
+const datosEntrega = () => ({ tipo: entRadio() ? entRadio().value : '', nombre: limpioEnt($('entNombre').value), telefono: limpioEnt($('entTelefono').value), direccion: limpioEnt($('entDireccion').value) });
+const telefonoOk = t => { const f = window.Z18Cocina && window.Z18Cocina.telefono; return typeof f === 'function' ? !!f(t) : /^\d{8,15}$/.test(String(t).replace(/\D/g, '')); };   // la misma regla que usa cocina.js (099 123 456 → 598 99 123 456)
+const entMal = (campo, d) => campo === 'tipo' ? !d.tipo : campo === 'nombre' ? d.nombre.length < 2 : campo === 'telefono' ? !telefonoOk(d.telefono) : d.tipo === 'delivery' && d.direccion.length < ENT_MIN_DIRECCION;
+const entPintar = (campo, msg) => {                   // aviso rojo debajo del campo (y aria-invalid para los lectores de pantalla)
+  $(ENT_ID[campo] + 'Err').textContent = msg || '';
+  const el = campo === 'tipo' ? $('entTipoGrupo') : $(ENT_ID[campo]);
+  if (msg) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid');
+};
+// mostrar = true: marca lo que falta y lleva el foco al primer campo incompleto. Devuelve true si está todo bien.
+const validarEntrega = (mostrar = false) => {
+  const d = datosEntrega(), malos = ENT_CAMPOS.filter(c => entMal(c, d));
+  if (mostrar) {
+    ENT_CAMPOS.forEach(c => entPintar(c, malos.includes(c) ? ENT_MSG[c] : ''));
+    if (malos.length) (malos[0] === 'tipo' ? document.querySelector('input[name="entTipo"]') : $(ENT_ID[malos[0]])).focus();
+  }
+  return !malos.length;
+};
+const entRefrescar = () => { const d = datosEntrega(); ENT_CAMPOS.forEach(c => { if ($(ENT_ID[c] + 'Err').textContent && !entMal(c, d)) entPintar(c, ''); }); };   // al corregir un campo su aviso se va solo
+const verDireccion = () => { $('entDireccionWrap').hidden = !(entRadio() && entRadio().value === 'delivery'); };                                                    // la dirección solo se pide para delivery
+const guardarEntrega = () => { try { const d = datosEntrega(); localStorage.setItem(ENT_KEY, JSON.stringify({ nombre: d.nombre, telefono: d.telefono, tipoEntrega: d.tipo, direccion: d.direccion })); } catch (e) {} };
+const leerEntrega = () => { try { const o = JSON.parse(localStorage.getItem(ENT_KEY)); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } };
+const cargarEntrega = () => {                         // rellena SOLO los campos vacíos: no pisa lo que la persona está escribiendo
+  const g = leerEntrega(), txt = v => typeof v === 'string' ? v : '', poner = (id, v) => { const el = $(id); if (!el.value.trim() && v) el.value = limpioEnt(v).slice(0, el.maxLength); };
+  poner('entNombre', txt(g.nombre) || (user && user.name));
+  poner('entTelefono', txt(g.telefono) || (user && user.phone));
+  poner('entDireccion', txt(g.direccion));
+  if (!entRadio() && (g.tipoEntrega === 'retiro' || g.tipoEntrega === 'delivery')) document.querySelector(`input[name="entTipo"][value="${g.tipoEntrega}"]`).checked = true;
+  verDireccion(); updateSend();
+};
+const limpiarEntrega = () => {                        // al cerrar sesión no queda nada de la persona anterior, ni en pantalla ni en el dispositivo
+  ['entNombre', 'entTelefono', 'entDireccion'].forEach(id => { $(id).value = ''; });
+  document.querySelectorAll('input[name="entTipo"]').forEach(r => { r.checked = false; });
+  try { localStorage.removeItem(ENT_KEY); } catch (e) {}
+  ENT_CAMPOS.forEach(c => entPintar(c, ''));
+  verDireccion(); updateSend();
+};
+$('cartDatos').addEventListener('input', () => { verDireccion(); guardarEntrega(); entRefrescar(); updateSend(); });
+$('cartDatos').addEventListener('change', () => { verDireccion(); guardarEntrega(); entRefrescar(); updateSend(); });
+$('cartDatos').addEventListener('submit', e => { e.preventDefault(); validarEntrega(true); });        // (por si algún navegador envía el formulario con Enter: no recarga la página)
+$('cartDatos').addEventListener('keydown', e => {                      // Enter pasa al campo siguiente (en el celular el teclado muestra «Siguiente») y en el último cierra el teclado
+  if (e.key !== 'Enter' || e.isComposing || e.target.tagName !== 'INPUT' || e.target.type === 'radio') return;
+  e.preventDefault();
+  const orden = ['entNombre', 'entTelefono', 'entDireccion', 'note'].map($).filter(el => el && el.offsetParent !== null), i = orden.indexOf(e.target);
+  if (i >= 0 && i < orden.length - 1) orden[i + 1].focus(); else e.target.blur();
+});
 
 // ── «Vaciar carrito»: la lógica de siempre (los canjes de Puntos Z se mantienen), pero ahora pide confirmación ──
 const vaciarCarrito = () => {
@@ -827,6 +895,7 @@ const check = i => {
 try { user = JSON.parse(localStorage.getItem('z18_session')); } catch (e) { user = null; }
 if (!user || typeof user.name !== 'string') user = null;
 if (user) user.esLeyenda = user.esLeyenda === true;                      // las sesiones guardadas antes de este sistema no traen el campo
+cargarEntrega();                                                         // datos de entrega: lo último que se usó en este dispositivo o los de la cuenta
 // Guarda la sesión en este dispositivo: identidad + estatus Leyenda. El historial y las misiones viven solo en memoria.
 const saveSession = () => { try { const { misiones, historial, ...s } = user; localStorage.setItem('z18_session', JSON.stringify(s)); } catch (e) {} };
 
@@ -895,9 +964,20 @@ let rejectCountA = 0;       // veces que rechazó la oferta de $50 (cheddar y ba
 let rejectCountB = 0;       // veces que rechazó la oferta de $230 (porción de papas con cheddar y bacon)
 let activeUpsell = null;    // 'A' | 'B' | null: qué oferta está mostrando el modal ahora mismo
 
+// Manda el pedido a la pantalla de cocina (cocina.js). Devuelve el código de 4 letras con el que quedó («Pedido N° ABCD») o '' si no se pudo: el WhatsApp sale igual.
+const notasCocina = () => [$('note').value.trim(), user && kitchenNotes ? `Notas de cocina: ${kitchenNotes}` : '', user && paymentMethod ? `Método de pago preferido: ${paymentMethod}` : ''].filter(Boolean).join('\n');
+const avisarCocina = () => {
+  try {
+    if (!window.Z18Cocina) return '';
+    const d = datosEntrega();
+    return window.Z18Cocina.registrar({ nombre: d.nombre, telefono: d.telefono, tipoEntrega: d.tipo, direccion: d.direccion, items: Object.entries(cart).map(([n, q]) => `${q} x ${n}`), notas: notasCocina(), total: total() }) || '';
+  } catch (e) { console.error('[Z18] No se pudo avisar a la cocina:', e); return ''; }
+};
 const goToWhatsApp = () => {
   updateSend();
   const snap = { items: Object.entries(cart).map(([n, q]) => ({ n, q, p: PRICE[n] })), total: total(), note: $('note').value.trim() };
+  const ref = avisarCocina();                                           // síncrono: window.open sigue dentro del toque del cliente (si no, el navegador bloquea la ventana)
+  if (ref) $('send').href = waRaw(orderText(ref));                      // el mismo código que ve la cocina: cliente y local se entienden por «Pedido N° ABCD»
   window.open($('send').href, '_blank', 'noopener');
   if (user && user.uid && snap.items.length) recordOrder(snap).catch(e => console.error('[Z18] No se pudo guardar el pedido en el historial:', e));
 };
@@ -940,6 +1020,7 @@ const acceptUpsell = () => {
 $('send').addEventListener('click', e => {
   if (!count()) return;                      // carrito vacío: el botón ya está deshabilitado
   e.preventDefault();
+  if (!validarEntrega(true)) { toast('Completá tus datos para enviar el pedido.', 2600); return; }   // sin nombre, teléfono y entrega la cocina no puede preparar ni entregar
   if (!openUpsell()) goToWhatsApp();          // ofertas bloqueadas o ya agregadas: directo a WhatsApp
 });
 $('upsellNo').onclick = () => { vibrate(); rejectUpsell(); };
@@ -1640,7 +1721,7 @@ const repeatOrder = id => {
      · accion    { tipo, texto, dato? } → botón del aviso; `tipo` es una clave de AVISO_ACCIONES
    ➕ Para sumar un aviso nuevo (una promo, un evento…): UNA entrada más en AVISOS_REGLAS. El contador, el panel y lo de leído / borrado ya andan solos.
    💾 Lo leído y lo borrado se guarda en ESTE dispositivo (localStorage `z18_avisos_<uid>`; sin sesión, `z18_avisos_anon`): una clave por cuenta, para no mezclarlas.
-   🎨 Los colores de la campanita son variables CSS (--campana-*, en styles.css): un evento (Halloween…) las redefine en html[data-evento="…"]. */
+   🎨 Los colores de la campanita son variables CSS (--campana-*, en styles.css): un evento (Navidad…) las redefine en html[data-evento="…"]. */
 const AVISOS_MAX_MARCAS = 300;                                         // cuántas marcas (leídas / borradas) se recuerdan por cuenta; si hay más, se olvidan las más viejas
 const unirLista = (a, y = 'y') => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} ${y} ${a[a.length - 1]}`);   // ['A', 'B', 'C'] → «A, B y C»
 const ptsLargo = etiqueta => String(etiqueta).replace(/PTS/i, 'Puntos Z');                 // '+10 PTS' → '+10 Puntos Z'
@@ -1930,6 +2011,7 @@ const signIn = u => {
   user = { name: String(u.name || u.email || 'Cliente Z18').slice(0, 60), email: u.email || '', phone: u.phone || '', avatar: u.avatar || '', uid: u.uid || '', esLeyenda: false };
   perfilListo = false;                                  // la cuenta recién entró: sus datos todavía no llegaron
   saveSession();
+  cargarEntrega();                                      // el nombre y el teléfono de la cuenta pasan al pedido (solo en los campos vacíos)
   paintUser(); closeAuth(); toast(`¡Hola, ${user.name}!`);
   loadProfile();                                        // trae favorita, preferencias e historial (y pinta las estrellas del menú)
 };
@@ -1939,6 +2021,7 @@ $('authOverlay').onclick = closeAuth;
 $('authBack').onclick = () => $('auth').dataset.view === 'register' ? show('login') : closeAuth();   // «Atrás»
 $('logout').onclick = () => {
   user = null; try { localStorage.removeItem('z18_session'); } catch (e) {}
+  limpiarEntrega();                                                        // los datos de entrega no se quedan en un dispositivo compartido
   loadFirebase().then(f => f.signOut(f.auth)).catch(() => {});   // correo, Google o Facebook: las 3 cierran sesión en Firebase
   puntosZ = lifetimeZ = 0; bono500Z = false; misionesZ = {}; semBorrador = {}; semMsg = {}; semEnCurso = {}; semVista = null; clearTimeout(lunesTimer); canjeArmado = null; msgCodigoZ(''); $('zCode').value = ''; favoriteBurger = paymentMethod = kitchenNotes = ''; userOrders = []; favEnVuelo.clear(); histVisibles = HIST_INICIAL; prefsDirty = false; perfilListo = false; setPrefsMsg('');   // que la próxima cuenta no vea estos datos
   paintProfile();
@@ -1981,7 +2064,7 @@ $('themeToggle').onchange = e => {
   try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
 };
 
-// Tema del evento (Halloween…): si event-manager.js tiene un evento en curso (window.Z18Events), «Mi cuenta» muestra su interruptor.
+// Tema del evento (Navidad…): si event-manager.js tiene un evento en curso (window.Z18Events), «Mi cuenta» muestra su interruptor.
 // El gestor es el dueño de la elección (la aplica al instante y la guarda en localStorage, clave z18_evento_off); acá solo se refleja en pantalla.
 const syncEvento = () => {
   const ev = window.Z18Events;

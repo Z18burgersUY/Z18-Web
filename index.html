@@ -7,7 +7,7 @@
 <meta name="description" content="Menú digital de Z18: hamburguesas artesanales, combos, milanesas al plato y pizzetas. Carne 100% de verdad. Delivery rápido en Paso de la Arena, Montevideo.">
 <meta name="theme-color" content="#0a0b0d">
 <script>try{if(localStorage.getItem('z18_theme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
-<!-- Gestor de eventos temáticos (Halloween…): va acá, en el <head>, para que el tema del evento ya esté puesto en el primer dibujo (sin parpadeo). El interruptor está dentro del archivo -->
+<!-- Gestor de eventos temáticos (Navidad…): va acá, en el <head>, para que el tema del evento ya esté puesto en el primer dibujo (sin parpadeo). El interruptor está dentro del archivo -->
 <script src="event-manager.js"></script>
 <link rel="icon" type="image/webp" href="assets/logo.webp">
 
@@ -242,9 +242,44 @@
     <h2 id="cartTitle" class="font-display text-3xl tracking-wide"><svg class="ico mr-2 text-fire" viewBox="0 0 576 512" aria-hidden="true" focusable="false"><use href="#i-cart-shopping"/></svg>Tu pedido</h2>
     <button id="cartClose" type="button" aria-label="Cerrar carrito" class="grid h-11 w-11 place-items-center rounded-full border border-cardborder text-xl"><svg class="ico" viewBox="0 0 384 512" aria-hidden="true" focusable="false"><use href="#i-xmark"/></svg></button>
   </div>
-  <div id="cartItems" class="flex-1 space-y-3 overflow-y-auto p-4"></div>
+  <div id="cartScroll" class="flex-1 overflow-y-auto">
+    <div id="cartItems" class="space-y-3 p-4"></div>
+    <!-- Datos del pedido: la cocina los necesita para preparar y entregar (nombre, teléfono y retiro / delivery con dirección). Se recuerdan en este dispositivo. La lógica está en app.js («DATOS DE ENTREGA») -->
+    <form id="cartDatos" novalidate hidden aria-labelledby="entTitulo" class="space-y-3 border-t border-cardborder p-4">
+      <div>
+        <h3 id="entTitulo" class="font-display text-2xl tracking-wide">Tus datos para el pedido</h3>
+        <p class="text-xs text-muted">Solo para preparar y entregar tu pedido. Se guardan en este dispositivo para la próxima.</p>
+      </div>
+      <fieldset id="entTipoGrupo" role="radiogroup" aria-labelledby="entTipoLeyenda" aria-describedby="entTipoErr" class="m-0 min-w-0 border-0 p-0">
+        <legend id="entTipoLeyenda" class="mb-2 text-sm font-semibold text-ink">¿Cómo lo querés recibir?</legend>
+        <div class="ent-opciones">
+          <label class="ent-label"><input type="radio" name="entTipo" value="retiro" class="ent-radio"><span class="ent-op">Retiro en el local</span></label>
+          <label class="ent-label"><input type="radio" name="entTipo" value="delivery" class="ent-radio"><span class="ent-op">Delivery</span></label>
+        </div>
+        <p id="entTipoErr" class="err ent-err" role="alert"></p>
+      </fieldset>
+      <div>
+        <label for="entNombre" class="mb-1 block text-sm font-semibold text-ink">Tu nombre</label>
+        <input id="entNombre" enterkeyhint="next" type="text" class="inp" autocomplete="name" maxlength="60" placeholder="Ej: Ana Pérez" aria-describedby="entNombreErr">
+        <p id="entNombreErr" class="err ent-err" role="alert"></p>
+      </div>
+      <div>
+        <label for="entTelefono" class="mb-1 block text-sm font-semibold text-ink">Tu teléfono (WhatsApp)</label>
+        <input id="entTelefono" enterkeyhint="next" type="tel" class="inp" inputmode="tel" autocomplete="tel" maxlength="24" placeholder="Ej: 099 123 456" aria-describedby="entTelefonoErr">
+        <p id="entTelefonoErr" class="err ent-err" role="alert"></p>
+      </div>
+      <div id="entDireccionWrap" hidden>
+        <label for="entDireccion" class="mb-1 block text-sm font-semibold text-ink">Dirección de entrega</label>
+        <input id="entDireccion" enterkeyhint="next" type="text" class="inp" autocomplete="street-address" maxlength="200" placeholder="Calle, número y esquina o referencia" aria-describedby="entDireccionErr">
+        <p id="entDireccionErr" class="err ent-err" role="alert"></p>
+      </div>
+    </form>
+    <div class="px-4 pb-4">
+      <label for="note" class="mb-1 block text-sm font-semibold text-ink">Aclaraciones <span class="font-normal text-muted">(opcional)</span></label>
+      <textarea id="note" rows="2" placeholder="Sin cebolla, forma de pago…" class="w-full resize-none rounded-xl border border-cardborder bg-cardbg p-3 text-sm text-ink placeholder:text-muted2"></textarea>
+    </div>
+  </div>
   <div class="safe-cart-bottom space-y-3 border-t border-cardborder bg-[var(--z-input)] p-4">
-    <textarea id="note" rows="2" placeholder="Aclaraciones: dirección, sin cebolla, forma de pago…" class="w-full resize-none rounded-xl border border-cardborder bg-cardbg p-3 text-sm text-ink placeholder:text-muted2"></textarea>
     <div class="space-y-1 text-sm text-muted">
       <p class="flex justify-between"><span>Subtotal</span><b id="sub" class="text-ink"></b></p>
       <p class="flex justify-between"><span>Envío</span><span>A coordinar por WhatsApp</span></p>
@@ -319,6 +354,7 @@
   <div id="misionBody"></div>
 </div>
 
+<script src="cocina.js" defer></script>
 <script src="app.js"></script>
 </body>
 </html>

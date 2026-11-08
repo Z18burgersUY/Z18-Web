@@ -5,7 +5,7 @@
   --z-ink: #ffffff; --z-muted: #e2e8f0; --z-muted2: #94a3b8;
 
   /* Acentos de marca como canales RGB («255 85 0»): se usan como rgb(var(--z-fire)) o rgb(var(--z-fire) / .4), y Tailwind los lee para fire y gold
-     (ver tailwind.config en index.html). Un evento temático (Halloween, Navidad…) solo tiene que redefinirlos en html[data-evento="…"]. */
+     (ver tailwind.config en index.html). Un evento temático (Navidad, Verano…) solo tiene que redefinirlos en html[data-evento="…"]. */
   --z-fire: 255 85 0;        /* naranja de marca: íconos, precios, bordes al pasar el mouse */
   --z-fire-deep: 217 56 0;   /* naranja oscuro: etiqueta de promo y final del degradé de los botones */
   --z-gold: 255 183 0;       /* dorado: subtítulos, enlaces, anillo de foco, puntos, misiones */
@@ -120,6 +120,20 @@ a:focus-visible { outline: 2px solid rgb(var(--z-gold)); outline-offset: 2px; }
 .inp[aria-invalid="true"] { border-color: #ff8a80; }
 .err { min-height: 1.1rem; margin-top: .35rem; font-size: .8rem; font-weight: 600; color: #ff8a80; }
 .err.ok { color: #4ade80; }
+
+/* ── Datos del pedido en el carrito (retiro / delivery, nombre, teléfono, dirección) ── */
+.ent-opciones { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.ent-label { position: relative; display: block; cursor: pointer; }
+.ent-radio { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }          /* el radio real queda (teclado y lectores de pantalla); lo que se ve es .ent-op */
+.ent-op { display: flex; min-height: 3rem; align-items: center; justify-content: center; padding: .5rem .75rem; border: 1px solid var(--z-hairline); border-radius: .75rem; background: var(--z-input); color: var(--z-ink); font-size: .9rem; font-weight: 700; line-height: 1.2; text-align: center; transition: border-color .15s, background-color .15s; }
+.ent-radio:checked + .ent-op { border-color: rgb(var(--z-fire)); background: rgb(var(--z-fire) / .16); box-shadow: 0 0 0 1px rgb(var(--z-fire)) inset; }
+.ent-radio:focus-visible + .ent-op { outline: 2px solid rgb(var(--z-gold)); outline-offset: 2px; }
+#entTipoGrupo[aria-invalid="true"] .ent-op { border-color: #ff8a80; }
+.ent-err { min-height: 0; }
+.ent-err:empty { display: none; }
+[data-theme="light"] .ent-err { color: #b91c1c; }
+[data-theme="light"] .inp[aria-invalid="true"], [data-theme="light"] #entTipoGrupo[aria-invalid="true"] .ent-op { border-color: #b91c1c; }
+@media (prefers-reduced-motion: reduce) { .ent-op { transition: none; } }
 .ferr { min-height: 0; margin-top: 0; }
 .lnk { color: rgb(var(--z-gold)); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .soc { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .25rem; min-height: 3.5rem; border: 1px solid transparent; border-radius: .75rem;
@@ -238,7 +252,7 @@ html { scroll-behavior: smooth; }
 [data-theme="light"] [data-sem-msg].text-gold, [data-theme="light"] #zCodeMsg.text-gold { color: rgb(var(--z-gold-ink)); }
 
 /* ═════════════════ Campanita de avisos 🔔 (botón de la barra superior + panel lateral) ═════════════════
-   Los colores salen de variables --campana-*: para vestirla de un evento (Halloween, Navidad…) alcanza con redefinirlas en html[data-evento="…"]
+   Los colores salen de variables --campana-*: para vestirla de un evento (Navidad, Verano…) alcanza con redefinirlas en html[data-evento="…"]
    (event-manager.js), sin tocar el resto. La lógica vive en app.js, sección «AVISOS». */
 :root {
   --campana-badge: #d93800;      /* fondo del contador de avisos sin leer */
@@ -282,178 +296,189 @@ button.aviso-cuerpo:focus-visible { outline: 2px solid rgb(var(--z-gold)); outli
 /* Los botones de los avisos llevan a una parte de «Mi cuenta»: al bajar hasta ahí no la tapa la barra fija de arriba del panel */
 #puntosZ, #misionesZ, #zRewardsBox { scroll-margin-top: 5rem; }
 
-/* ═════════════════ EVENTO · HALLOWEEN 🎃 ═════════════════
-   Se enciende con «const activeEvent = 'halloween';» en event-manager.js: el gestor pone data-evento="halloween" en <html> (antes del primer dibujo, así
+/* ═════════════════ EVENTO · NAVIDAD 🎄 ═════════════════
+   Se enciende con «const activeEvent = 'navidad';» en event-manager.js: el gestor pone data-evento="navidad" en <html> (antes del primer dibujo, así
    no hay parpadeo) y todo lo de abajo se aplica. Con «null» NADA de esto cuenta: la web queda como siempre. Es solo CSS: no toca la lógica (app.js).
    Cómo está armado:
-     1) variables → la paleta (--hw-*) y su mapeo a los tokens del sitio (--z-*, --campana-*), uno para modo oscuro y otro para modo claro.
+     1) variables → la paleta (--nav-*) y su mapeo a los tokens del sitio (--z-*, --campana-*), uno para modo oscuro y otro para modo claro.
                     Para REDEFINIR el evento (otro color, otra intensidad) alcanza con cambiar esas variables.
-     2) detalles  → lo que un cambio de color no resuelve: etiqueta de promo, brillos, selección de texto, tinta oscura sobre el naranja neón…
+     2) detalles  → lo que un cambio de color no resuelve: etiqueta de promo, brillos, selección de texto, tinta oscura sobre el rojo claro…
      3) emojis    → ::before con content. No están en el HTML: al apagar el evento desaparecen solos y los lectores de pantalla no los leen («/ ""»).
-     4) paneles   → Carrito y Avisos: borde violeta, telaraña en la esquina y un bicho colgando del borde de arriba (CSS puro, sin clics, sin mover nada).
-   Modo claro: el naranja y el violeta se oscurecen lo justo para leerse sobre fondo claro (contraste AA); los botones siguen en naranja neón. */
+     4) cabecera  → guirnalda de luces que titilan, nieve cayendo (las brasas de siempre vestidas de copos) y nieve acumulada sobre las tarjetas.
+     5) paneles   → Carrito y Avisos: borde verde, mini guirnalda arriba y un adorno colgando del borde (CSS puro, sin clics, sin mover nada).
+   Los copos grandes y el sello «Especial Navidad» no están acá: los arma event-manager.js (entrada «navidad» del registro EVENTS).
+   Modo claro: el rojo y el verde se oscurecen lo justo para leerse sobre fondo claro (contraste AA); los botones siguen en rojo Navidad. */
 
 /* 1 · Variables — modo OSCURO (por defecto) */
-html[data-evento="halloween"] {
+html[data-evento="navidad"] {
+  --evento-nombre: "Navidad"; --evento-emoji: "🎄";
   /* Paleta del evento (canales RGB) */
-  --hw-calabaza: 255 122 0;    /* Naranja Calabaza Neón */
-  --hw-brasa: 255 80 0;        /* …su extremo más rojizo (degradé de los botones) */
-  --hw-violeta: 168 85 247;    /* Violeta Espeluznante: brillos y bordes */
-  --hw-violeta-2: 124 58 237;  /* violeta intenso: etiqueta de promo y contador de la campanita */
-  --hw-purpura: 76 29 149;     /* Púrpura Oscuro: fondo de las etiquetas */
-  --hw-lavanda: 192 132 252;   /* violeta claro: textos y acentos sobre fondo oscuro */
-  --hw-noche: 26 11 46;        /* tinta oscura para el texto sobre naranja neón */
-  --hw-tela: 216 180 254;      /* telarañas */
-  --hw-tela-img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M100 0L0.0 0.0M100 0L7.6 38.3M100 0L29.3 70.7M100 0L61.7 92.4M100 0L100.0 100.0M80.0 0.0Q84.3 3.1 81.5 7.7M81.5 7.7Q86.7 8.9 85.9 14.1M85.9 14.1Q91.1 13.3 92.3 18.5M92.3 18.5Q96.9 15.7 100.0 20.0M62.0 0.0Q70.2 5.9 64.9 14.5M64.9 14.5Q74.7 16.9 73.1 26.9M73.1 26.9Q83.1 25.3 85.5 35.1M85.5 35.1Q94.1 29.8 100.0 38.0M44.0 0.0Q56.1 8.7 48.3 21.4M48.3 21.4Q62.8 24.9 60.4 39.6M60.4 39.6Q75.1 37.2 78.6 51.7M78.6 51.7Q91.3 43.9 100.0 56.0M26.0 0.0Q41.9 11.5 31.6 28.3M31.6 28.3Q50.8 32.9 47.7 52.3M47.7 52.3Q67.1 49.2 71.7 68.4M71.7 68.4Q88.5 58.1 100.0 74.0M8.0 0.0Q27.8 14.4 15.0 35.2M15.0 35.2Q38.8 40.9 34.9 65.1M34.9 65.1Q59.1 61.2 64.8 85.0M64.8 85.0Q85.6 72.2 100.0 92.0' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  --nav-rojo: 214 40 57;         /* Rojo Navidad: botones y etiquetas (con texto blanco encima) */
+  --nav-rojo-hondo: 150 18 38;   /* …su extremo oscuro (degradé de los botones y etiqueta de promo) */
+  --nav-rojo-claro: 255 107 112; /* rojo claro: textos e íconos sobre fondo oscuro */
+  --nav-verde: 74 190 120;       /* verde pino vivo: brillos, bordes y barra de Puntos Z */
+  --nav-oro: 255 200 69;         /* oro: luces, aros y acentos */
+  --nav-noche: 6 20 12;          /* tinta oscura para el texto sobre el rojo claro */
+  /* Dibujos (SVG en línea): guirnalda de luces (A y B titilan por turnos; AB = las cuatro juntas, para los paneles) y nieve acumulada */
+  --nav-luces-a: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 24' width='96' height='24'%3E%3Cpath d='M0 3Q12 13 24 3Q36 13 48 3Q60 13 72 3Q84 13 96 3' fill='none' stroke='%233d6b52' stroke-width='1.2'/%3E%3Ccircle cx='12' cy='14' r='9' fill='%23ff4d5a' opacity='.3'/%3E%3Crect x='10.3' y='7' width='3.4' height='3.2' rx='.7' fill='%232b4a39'/%3E%3Cellipse cx='12' cy='14.2' rx='3.3' ry='4.4' fill='%23ff4d5a'/%3E%3Cellipse cx='11' cy='12.8' rx='.9' ry='1.5' fill='%23fff' opacity='.75'/%3E%3Ccircle cx='60' cy='14' r='9' fill='%233ddc84' opacity='.3'/%3E%3Crect x='58.3' y='7' width='3.4' height='3.2' rx='.7' fill='%232b4a39'/%3E%3Cellipse cx='60' cy='14.2' rx='3.3' ry='4.4' fill='%233ddc84'/%3E%3Cellipse cx='59' cy='12.8' rx='.9' ry='1.5' fill='%23fff' opacity='.75'/%3E%3C/svg%3E");
+  --nav-luces-b: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 24' width='96' height='24'%3E%3Cpath d='M0 3Q12 13 24 3Q36 13 48 3Q60 13 72 3Q84 13 96 3' fill='none' stroke='%233d6b52' stroke-width='1.2'/%3E%3Ccircle cx='36' cy='14' r='9' fill='%23ffc845' opacity='.3'/%3E%3Crect x='34.3' y='7' width='3.4' height='3.2' rx='.7' fill='%232b4a39'/%3E%3Cellipse cx='36' cy='14.2' rx='3.3' ry='4.4' fill='%23ffc845'/%3E%3Cellipse cx='35' cy='12.8' rx='.9' ry='1.5' fill='%23fff' opacity='.75'/%3E%3Ccircle cx='84' cy='14' r='9' fill='%235cc8ff' opacity='.3'/%3E%3Crect x='82.3' y='7' width='3.4' height='3.2' rx='.7' fill='%232b4a39'/%3E%3Cellipse cx='84' cy='14.2' rx='3.3' ry='4.4' fill='%235cc8ff'/%3E%3Cellipse cx='83' cy='12.8' rx='.9' ry='1.5' fill='%23fff' opacity='.75'/%3E%3C/svg%3E");
+  --nav-luces-ab: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 24' width='96' height='24'%3E%3Cpath d='M0 3Q12 13 24 3Q36 13 48 3Q60 13 72 3Q84 13 96 3' fill='none' stroke='%233d6b52' stroke-width='1.2'/%3E%3Ccircle cx='12' cy='14' r='9' fill='%23ff4d5a' opacity='.3'/%3E%3Crect x='10.3' y='7' width='3.4' height='3.2' rx='.7' fill='%232b4a39'/%3E%3Cellipse cx='12' cy='14.2' rx='3.3' ry='4.4' fill='%23ff4d5a'/%3E%3Cellipse cx='11' cy='12.8' rx='.9' ry='1.5' fill='%23fff' opacity='.75'/%3E%3Ccircle cx='36' cy='14' r='9' fill='%23ffc845' opacity='.3'/%3E%3Crect x='34.3' y='7' width='3.4' height='3.2' rx='.7' fill='%232b4a39'/%3E%3Cellipse cx='36' cy='14.2' rx='3.3' ry='4.4' fill='%23ffc845'/%3E%3Cellipse cx='35' cy='12.8' rx='.9' ry='1.5' fill='%23fff' opacity='.75'/%3E%3Ccircle cx='60' cy='14' r='9' fill='%233ddc84' opacity='.3'/%3E%3Crect x='58.3' y='7' width='3.4' height='3.2' rx='.7' fill='%232b4a39'/%3E%3Cellipse cx='60' cy='14.2' rx='3.3' ry='4.4' fill='%233ddc84'/%3E%3Cellipse cx='59' cy='12.8' rx='.9' ry='1.5' fill='%23fff' opacity='.75'/%3E%3Ccircle cx='84' cy='14' r='9' fill='%235cc8ff' opacity='.3'/%3E%3Crect x='82.3' y='7' width='3.4' height='3.2' rx='.7' fill='%232b4a39'/%3E%3Cellipse cx='84' cy='14.2' rx='3.3' ry='4.4' fill='%235cc8ff'/%3E%3Cellipse cx='83' cy='12.8' rx='.9' ry='1.5' fill='%23fff' opacity='.75'/%3E%3C/svg%3E");
+  --nav-nieve-img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 15' width='96' height='15'%3E%3Cpath d='M0 0H96V5C92 5 90 11 84 11C78 11 78 6 72 6C66 6 66 12 58 12C50 12 52 5 44 5C38 5 36 10 30 10C24 10 24 4 18 4C12 4 10 9 5 9C2 9 0 7 0 5Z' transform='translate(0 1.6)' fill='%23b9d4e3' opacity='.85'/%3E%3Cpath d='M0 0H96V5C92 5 90 11 84 11C78 11 78 6 72 6C66 6 66 12 58 12C50 12 52 5 44 5C38 5 36 10 30 10C24 10 24 4 18 4C12 4 10 9 5 9C2 9 0 7 0 5Z' fill='%23ffffff'/%3E%3C/svg%3E");
 
-  /* Superficies: negro violáceo */
-  --z-bg: #0b0714; --z-bg2: #140c24; --z-hero1: #2a1245;
-  --z-card: #1b1131; --z-input: #100a1e; --z-chip: #2a1c47;
-  --z-border: #35235a; --z-hairline: #4d3a78;
-  --z-muted: #e9ddfb; --z-muted2: #b8a6d9;
+  /* Superficies: negro verdoso */
+  --z-bg: #06110b; --z-bg2: #0b1c13; --z-hero1: #123a25;
+  --z-card: #11251a; --z-input: #0a1810; --z-chip: #1a3524;
+  --z-border: #25472f; --z-hairline: #3a6a4c;
+  --z-muted: #e3f1e8; --z-muted2: #a9c7b4;
 
   /* Tokens del sitio → paleta del evento */
-  --z-fire: var(--hw-calabaza);
-  --z-fire-deep: var(--hw-brasa);
-  --z-gold: var(--hw-lavanda);          /* lo que era dorado (subtítulos, enlaces, foco, puntos, misiones) pasa a violeta claro */
-  --z-gold-hi: 233 213 255;
-  --z-amber: var(--hw-calabaza);        /* la barra de Puntos Z va de violeta a naranja neón */
-  --z-star: var(--hw-calabaza);         /* estrella de favoritos */
-  --z-on-fire: var(--hw-noche);         /* texto oscuro sobre el naranja neón (contraste 6:1 o más) */
-  --z-glow-a: var(--hw-violeta); --z-glow-b: var(--hw-violeta); --z-glow-c: var(--hw-violeta);
+  --z-fire: var(--nav-rojo-claro);
+  --z-fire-deep: var(--nav-rojo-hondo);
+  --z-gold: var(--nav-oro);             /* el dorado de siempre: subtítulos, enlaces, foco, puntos y misiones quedan en oro (las luces del árbol) */
+  --z-gold-hi: 255 236 168;
+  --z-amber: 255 170 40;
+  --z-star: var(--nav-oro);             /* estrella de favoritos */
+  --z-on-fire: 255 255 255;
+  --z-btn-a: var(--nav-rojo); --z-btn-b: var(--nav-rojo-hondo);   /* el botón principal va en rojo Navidad (texto blanco, contraste 5:1 o más) */
+  --z-glow-a: 255 190 60; --z-glow-b: 255 200 90; --z-glow-c: 255 210 120;
 
   /* Campanita 🔔 y panel de avisos */
-  --campana-badge: rgb(var(--hw-violeta-2));
+  --campana-badge: rgb(var(--nav-rojo));
   --campana-badge-tx: #ffffff;
-  --campana-acento: rgb(var(--hw-calabaza));
-  --campana-nuevo: rgb(var(--hw-calabaza));
-  --campana-ico: rgb(var(--hw-lavanda));
+  --campana-acento: rgb(var(--nav-rojo-claro));
+  --campana-nuevo: rgb(var(--nav-oro));
+  --campana-ico: rgb(var(--nav-oro));
 }
 
 /* 1 · Variables — modo CLARO */
-html[data-evento="halloween"][data-theme="light"] {
-  --hw-tela: 109 40 217;
+html[data-evento="navidad"][data-theme="light"] {
+  --nav-verde: 22 101 52;               /* pino profundo */
+  --nav-oro: 202 138 4;                 /* oro oscuro: se ve como aro sobre fondo claro */
 
-  --z-bg: #f6f1fc; --z-bg2: #ffffff; --z-hero1: #e9dcfb;
-  --z-card: #ffffff; --z-input: #f2ecfa; --z-chip: #ece3f8;
-  --z-border: #e2d6f3; --z-hairline: #cbbbe6;
-  --z-ink: #1c1030; --z-muted: #4b3d66; --z-muted2: #6e5f8c;
+  --z-bg: #f2f8f3; --z-bg2: #ffffff; --z-hero1: #dcefe1;
+  --z-card: #ffffff; --z-input: #ecf4ee; --z-chip: #e1efe4;
+  --z-border: #d0e3d5; --z-hairline: #b5cfbc;
+  --z-ink: #0e2317; --z-muted: #38533f; --z-muted2: #4f6858;
 
-  --z-fire: 194 65 12;                  /* calabaza tostada: se lee como texto e ícono sobre fondo claro */
-  --z-fire-deep: 154 52 18;
-  --z-gold: 109 40 217;                 /* violeta profundo */
-  --z-gold-hi: 167 139 250;
-  --z-gold-ink: 91 33 182; --z-gold-line: 124 58 237; --z-gold-deep: 76 29 149;
-  --z-amber: 234 88 12;
-  --z-star: 234 88 12; --z-star-ink: 194 65 12; --z-star-line: 234 88 12;
-  --z-btn-a: 255 138 31; --z-btn-b: 255 106 0;   /* el botón principal sigue en naranja neón también sobre claro */
+  --z-fire: 185 28 28;                  /* rojo profundo: se lee como texto e ícono sobre fondo claro */
+  --z-fire-deep: 153 27 27;
+  --z-gold: 22 101 52;                  /* lo que era dorado (subtítulos, enlaces, foco, puntos, misiones) pasa a verde pino */
+  --z-gold-hi: 74 190 120;
+  --z-gold-ink: 20 83 45; --z-gold-line: 22 101 52; --z-gold-deep: 20 83 45;
+  --z-amber: 21 128 61;
+  --z-star: 202 138 4; --z-star-ink: 161 98 7; --z-star-line: 202 138 4;
+  --z-btn-a: 220 38 38; --z-btn-b: 185 28 28;   /* el botón principal sigue en rojo Navidad también sobre claro */
+  --z-glow-a: 22 163 74; --z-glow-b: 22 163 74; --z-glow-c: 22 163 74;
 
-  --campana-badge: rgb(var(--hw-violeta-2));
+  --campana-badge: rgb(var(--nav-rojo));
   --campana-acento: rgb(var(--z-fire));
-  --campana-nuevo: rgb(var(--z-fire));
+  --campana-nuevo: rgb(var(--z-star));
   --campana-ico: rgb(var(--z-gold));
 }
 
 /* 2 · Detalles */
-/* Selección de texto: violeta con letra blanca (el naranja neón con letra blanca no se lee) */
-html[data-evento="halloween"] *::selection { background: rgb(var(--hw-violeta-2)); color: #fff; }
-/* Cabecera: el logo brilla en violeta y naranja; las brasas alternan los dos colores */
-html[data-evento="halloween"] .glow-logo { filter: drop-shadow(0 0 24px rgb(var(--hw-violeta) / .6)) drop-shadow(0 0 10px rgb(var(--hw-calabaza) / .55)); }
-html[data-evento="halloween"] .glow-text { text-shadow: 0 0 16px rgb(var(--hw-violeta) / .75); }
-html[data-evento="halloween"][data-theme="light"] .glow-text { text-shadow: 0 0 14px rgb(var(--hw-violeta) / .3); }
-html[data-evento="halloween"] .ember { background: rgb(var(--hw-calabaza)); box-shadow: 0 0 8px 2px rgb(var(--hw-calabaza) / .7); }
-html[data-evento="halloween"] .ember:nth-child(even) { background: rgb(var(--hw-lavanda)); box-shadow: 0 0 8px 2px rgb(var(--hw-violeta) / .7); }
-html[data-evento="halloween"] .photo { background: linear-gradient(135deg, #2a1245, #0f0a1c); }
-/* Etiqueta de promoción: violeta con aro y brillo naranja (resalta sobre las fotos cálidas de la comida) */
-html[data-evento="halloween"] .tag { background: linear-gradient(135deg, rgb(var(--hw-violeta-2)), rgb(var(--hw-purpura))); color: #fff;
-  box-shadow: 0 0 0 1px rgb(var(--hw-calabaza) / .85), 0 0 14px rgb(var(--hw-calabaza) / .45), 0 4px 14px rgba(0, 0, 0, .55); }
-/* Botón principal: naranja neón con aro violeta; al pasar el mouse brilla más */
-html[data-evento="halloween"] .btn-fire { box-shadow: 0 4px 18px rgb(var(--z-btn-a) / .5), 0 0 0 1px rgb(var(--hw-violeta) / .4); }
-html[data-evento="halloween"] .btn-fire:hover { box-shadow: 0 6px 26px rgb(var(--z-btn-a) / .75), 0 0 0 2px rgb(var(--hw-violeta) / .65); }
-/* Tarjetas al pasar el mouse: borde naranja y halo violeta */
-html[data-evento="halloween"] .menu-card:hover { box-shadow: 0 10px 28px -8px rgb(var(--hw-violeta) / .55), 0 0 18px -4px rgb(var(--hw-calabaza) / .45); }
-/* Controles con relleno naranja y texto/íconos blancos: sobre el naranja neón (modo oscuro) llevan tinta oscura para leerse */
-html[data-evento="halloween"]:not([data-theme="light"]) #avatarEdit { color: rgb(var(--z-on-fire)); }
-html[data-evento="halloween"]:not([data-theme="light"]) #accBtn.\!text-white { color: rgb(var(--z-on-fire)) !important; }
-/* Contador del carrito: violeta claro con letra negra (oscuro); en claro el violeta es profundo, así que va con letra blanca */
-html[data-evento="halloween"][data-theme="light"] #badge { color: #fff; }
-/* Puntos Z: el saldo en naranja neón y las barras de recompensas con el mismo degradé violeta → naranja que el medidor */
-html[data-evento="halloween"] #zBalance { color: rgb(var(--z-fire)); }
-html[data-evento="halloween"]:not([data-theme="light"]) #zBalance { text-shadow: 0 0 18px rgb(var(--hw-calabaza) / .4); }
-html[data-evento="halloween"] .z-meter-fill { box-shadow: 0 0 10px rgb(var(--hw-calabaza) / .55); }
-html[data-evento="halloween"] .bar-fill { background-image: linear-gradient(90deg, rgb(var(--z-gold)), rgb(var(--z-amber))); }
-html[data-evento="halloween"]:not([data-theme="light"]) .price-tag { text-shadow: 0 0 14px rgb(var(--hw-calabaza) / .35); }
-/* Insignia Leyenda Z18: violeta → naranja con tinta oscura */
-html[data-evento="halloween"] .badge-leyenda { color: rgb(var(--hw-noche)); background: linear-gradient(135deg, #e9d5ff, rgb(var(--hw-lavanda)) 55%, rgb(var(--hw-calabaza))); }
-/* Campanita: cuando hay avisos nuevos, un brillo naranja alrededor */
-html[data-evento="halloween"] .campana.tiene-avisos { box-shadow: 0 0 12px rgb(var(--hw-calabaza) / .5); }
+/* Selección de texto: rojo con letra blanca */
+html[data-evento="navidad"] *::selection { background: rgb(var(--nav-rojo)); color: #fff; }
+/* Cabecera: el logo brilla en oro y rojo */
+html[data-evento="navidad"] .glow-logo { filter: drop-shadow(0 0 24px rgb(var(--nav-oro) / .5)) drop-shadow(0 0 10px rgb(var(--nav-rojo) / .5)); }
+html[data-evento="navidad"] .glow-text { text-shadow: 0 0 16px rgb(var(--nav-oro) / .55); }
+html[data-evento="navidad"][data-theme="light"] .glow-text { text-shadow: 0 0 14px rgb(var(--nav-rojo) / .22); }
+html[data-evento="navidad"] .photo { background: linear-gradient(135deg, #123a25, #06110b); }
+/* Etiqueta de promoción: rojo con aro dorado (resalta sobre las fotos cálidas de la comida) */
+html[data-evento="navidad"] .tag { background: linear-gradient(135deg, rgb(var(--nav-rojo)), rgb(var(--nav-rojo-hondo))); color: #fff;
+  box-shadow: 0 0 0 1px rgb(var(--nav-oro) / .9), 0 0 14px rgb(var(--nav-oro) / .35), 0 4px 14px rgba(0, 0, 0, .55); }
+/* Botón principal: rojo con aro dorado; al pasar el mouse brilla más */
+html[data-evento="navidad"] .btn-fire { box-shadow: 0 4px 18px rgb(var(--z-btn-a) / .5), 0 0 0 1px rgb(var(--nav-oro) / .5); }
+html[data-evento="navidad"] .btn-fire:hover { box-shadow: 0 6px 26px rgb(var(--z-btn-a) / .75), 0 0 0 2px rgb(var(--nav-oro) / .75); }
+/* Enlace destacado de la barra de secciones («Burgers»): fondo rojo, así que la letra va blanca también cuando es el activo o tiene el mouse encima (la regla de siempre le pone tinta oscura, que sobre el rojo del modo claro no alcanza) */
+html[data-evento="navidad"] .nl.nl-hot { color: #fff; }
+/* Tarjetas al pasar el mouse: borde rojo y halo verde y dorado */
+html[data-evento="navidad"] .menu-card:hover { box-shadow: 0 10px 28px -8px rgb(var(--nav-verde) / .5), 0 0 18px -4px rgb(var(--nav-oro) / .4); }
+/* Controles con relleno rojo y texto/íconos blancos: sobre el rojo claro (modo oscuro) llevan tinta oscura para leerse */
+html[data-evento="navidad"]:not([data-theme="light"]) #avatarEdit { color: rgb(var(--nav-noche)); }
+html[data-evento="navidad"]:not([data-theme="light"]) #accBtn.\!text-white { color: rgb(var(--nav-noche)) !important; }
+/* Contador del carrito: dorado con letra negra (oscuro); en claro el «dorado» es verde pino, así que va con letra blanca */
+html[data-evento="navidad"][data-theme="light"] #badge { color: #fff; }
+/* Puntos Z: la barra del medidor y las de recompensas van de verde pino a oro */
+html[data-evento="navidad"] :is(.z-meter-fill, .bar-fill) { background-image: linear-gradient(90deg, rgb(var(--nav-verde)), rgb(var(--nav-oro))); }
+html[data-evento="navidad"] .z-meter-fill { box-shadow: 0 0 10px rgb(var(--nav-oro) / .45); }
+html[data-evento="navidad"]:not([data-theme="light"]) .price-tag { text-shadow: 0 0 14px rgb(var(--nav-rojo-claro) / .35); }
+/* Insignia Leyenda Z18: oro con tinta oscura */
+html[data-evento="navidad"] .badge-leyenda { color: rgb(var(--nav-noche)); background: linear-gradient(135deg, #fff1b8, #ffc845 55%, #ff8a8a); }
+/* Campanita: cuando hay avisos nuevos, un brillo dorado alrededor */
+html[data-evento="navidad"] .campana.tiene-avisos { box-shadow: 0 0 12px rgb(var(--nav-oro) / .5); }
 
 /* 3 · Emojis en los títulos (reemplazan al ícono de siempre, que se esconde mientras dura el evento) */
-html[data-evento="halloween"] :is(section[data-t] h2, #cartTitle, #avisosTitle, #accountTitle, #loginTitle, #registerTitle) > svg.ico { display: none; }
-html[data-evento="halloween"] :is(section[data-t] h2, #cartTitle, #avisosTitle, #accountTitle, #loginTitle, #registerTitle)::before {
+html[data-evento="navidad"] :is(section[data-t] h2, #cartTitle, #avisosTitle, #accountTitle, #loginTitle, #registerTitle) > svg.ico { display: none; }
+html[data-evento="navidad"] :is(section[data-t] h2, #cartTitle, #avisosTitle, #accountTitle, #loginTitle, #registerTitle)::before {
   display: inline-block; margin-right: .4em; font-size: .8em; line-height: 1; vertical-align: .04em; text-shadow: none; }
-html[data-evento="halloween"]:not([data-theme="light"]) :is(section[data-t] h2, #cartTitle, #avisosTitle, #accountTitle, #loginTitle, #registerTitle) { text-shadow: 0 0 20px rgb(var(--hw-violeta) / .6); }
-html[data-evento="halloween"] #burgers h2::before   { content: "🎃"; content: "🎃" / ""; }
-html[data-evento="halloween"] #combos h2::before    { content: "👻"; content: "👻" / ""; }
-html[data-evento="halloween"] #milanesas h2::before { content: "🕷️"; content: "🕷️" / ""; }
-html[data-evento="halloween"] #pizzetas h2::before  { content: "🧙"; content: "🧙" / ""; }
-html[data-evento="halloween"] #reclutas h2::before  { content: "🍬"; content: "🍬" / ""; }
-html[data-evento="halloween"] #minutas h2::before   { content: "💀"; content: "💀" / ""; }
-html[data-evento="halloween"] #bebidas h2::before   { content: "🧪"; content: "🧪" / ""; }
-html[data-evento="halloween"] #info h2::before      { content: "🌙"; content: "🌙" / ""; }
-html[data-evento="halloween"] #cartTitle::before     { content: "🎃"; content: "🎃" / ""; }
-html[data-evento="halloween"] #avisosTitle::before   { content: "🦇"; content: "🦇" / ""; }
-html[data-evento="halloween"] #accountTitle::before  { content: "🎃"; content: "🎃" / ""; }
-html[data-evento="halloween"] #loginTitle::before    { content: "👻"; content: "👻" / ""; }
-html[data-evento="halloween"] #registerTitle::before { content: "🧛"; content: "🧛" / ""; }
+html[data-evento="navidad"]:not([data-theme="light"]) :is(section[data-t] h2, #cartTitle, #avisosTitle, #accountTitle, #loginTitle, #registerTitle) { text-shadow: 0 0 20px rgb(var(--nav-oro) / .4); }
+html[data-evento="navidad"] #burgers h2::before   { content: "🎄"; content: "🎄" / ""; }
+html[data-evento="navidad"] #combos h2::before    { content: "🎁"; content: "🎁" / ""; }
+html[data-evento="navidad"] #milanesas h2::before { content: "🦌"; content: "🦌" / ""; }
+html[data-evento="navidad"] #pizzetas h2::before  { content: "⛄"; content: "⛄" / ""; }
+html[data-evento="navidad"] #reclutas h2::before  { content: "🧝"; content: "🧝" / ""; }
+html[data-evento="navidad"] #minutas h2::before   { content: "⭐"; content: "⭐" / ""; }
+html[data-evento="navidad"] #bebidas h2::before   { content: "🥂"; content: "🥂" / ""; }
+html[data-evento="navidad"] #info h2::before      { content: "❄️"; content: "❄️" / ""; }
+html[data-evento="navidad"] #cartTitle::before     { content: "🎅"; content: "🎅" / ""; }
+html[data-evento="navidad"] #avisosTitle::before   { content: "🔔"; content: "🔔" / ""; }
+html[data-evento="navidad"] #accountTitle::before  { content: "🎄"; content: "🎄" / ""; }
+html[data-evento="navidad"] #loginTitle::before    { content: "🎅"; content: "🎅" / ""; }
+html[data-evento="navidad"] #registerTitle::before { content: "🧝"; content: "🧝" / ""; }
 /* «Mi cuenta»: títulos de las secciones (el del historial no tiene id: se lo encuentra por el bloque que le sigue) */
-html[data-evento="halloween"] :is(#misionesZ, #zRewardsBox) > h3::before { margin-right: .35em; font-size: .85em; }
-html[data-evento="halloween"] #misionesZ > h3::before   { content: "🔮"; content: "🔮" / ""; }
-html[data-evento="halloween"] #zRewardsBox > h3::before { content: "🍬"; content: "🍬" / ""; }
-html[data-evento="halloween"] h3:has(+ #orderHistory)::before { content: "🕸️"; content: "🕸️" / ""; margin-right: .35em; font-size: .85em; }   /* :has() va en regla aparte: si un navegador viejo no la entiende, solo se pierde este emoji */
-/* Escobas 🧹: «Limpiar» (avisos) y «Vaciar carrito» */
-html[data-evento="halloween"] #avisosLimpiar > svg.ico { display: none; }
-html[data-evento="halloween"] #avisosLimpiar::before { content: "🧹"; content: "🧹" / ""; font-size: 1.1rem; line-height: 1; }
-html[data-evento="halloween"] #clear::before { content: "🧹"; content: "🧹" / ""; display: inline-block; margin-right: .4em; }
+html[data-evento="navidad"] :is(#misionesZ, #zRewardsBox) > h3::before { margin-right: .35em; font-size: .85em; }
+html[data-evento="navidad"] #misionesZ > h3::before   { content: "🎁"; content: "🎁" / ""; }
+html[data-evento="navidad"] #zRewardsBox > h3::before { content: "⭐"; content: "⭐" / ""; }
+html[data-evento="navidad"] h3:has(+ #orderHistory)::before { content: "❄️"; content: "❄️" / ""; margin-right: .35em; font-size: .85em; }   /* :has() va en regla aparte: si un navegador viejo no la entiende, solo se pierde este emoji */
 
-/* 4 · Paneles laterales y cabecera: borde violeta, telaraña en la esquina y un bicho colgando (todo decorativo: sin clics ni cambios de tamaño) */
-html[data-evento="halloween"] :is(#cart, #avisos) { border-left-color: rgb(var(--hw-violeta) / .55); }
-/* El halo violeta solo va con el panel ABIERTO: cerrado (inert) el panel espera fuera de pantalla y su sombra se asomaría por el borde derecho */
-html[data-evento="halloween"] :is(#cart, #avisos):not([inert]) { box-shadow: -16px 0 44px -18px rgb(var(--hw-violeta) / .6), 0 25px 50px -12px rgba(0, 0, 0, .55); }
-html[data-evento="halloween"][data-theme="light"] :is(#cart, #avisos):not([inert]) { box-shadow: -16px 0 40px -18px rgb(var(--hw-violeta) / .4), 0 25px 50px -12px rgba(0, 0, 0, .25); }
-html[data-evento="halloween"] :is(.safe-cart-top, .safe-avisos-top) { position: relative; border-bottom-color: rgb(var(--hw-violeta) / .4); }
-html[data-evento="halloween"] .safe-cart-bottom { border-top-color: rgb(var(--hw-violeta) / .4); }
-html[data-evento="halloween"] :is(.safe-cart-top, .safe-avisos-top)::before, html[data-evento="halloween"] header::before {
-  content: ""; position: absolute; top: 0; right: 0; z-index: -1; width: 4.7rem; height: 4.7rem; pointer-events: none;
-  background: rgb(var(--hw-tela)); opacity: .32; -webkit-mask: var(--hw-tela-img) top right / contain no-repeat; mask: var(--hw-tela-img) top right / contain no-repeat; }
-html[data-evento="halloween"] header::before { z-index: 0; width: clamp(5rem, 28vw, 8rem); height: clamp(5rem, 28vw, 8rem); opacity: .38; }
-html[data-evento="halloween"] .safe-cart-top::after, html[data-evento="halloween"] header::after {   /* araña colgada de un hilo */
-  content: "🕷️"; content: "🕷️" / ""; position: absolute; top: 0; right: 4.7rem; padding-top: 1.9rem; font-size: 1.15rem; line-height: 1; pointer-events: none;
-  background: linear-gradient(rgb(var(--hw-tela) / .75), rgb(var(--hw-tela) / .75)) 50% 0 / 1px 1.75rem no-repeat; transform-origin: 50% 0; }
-html[data-evento="halloween"] header::after { right: 1.3rem; padding-top: 4.9rem; font-size: 1.5rem; background-size: 1px 4.6rem; }
-html[data-evento="halloween"] .safe-avisos-top::after {   /* murciélago colgado boca abajo */
-  content: "🦇"; content: "🦇" / ""; position: absolute; top: .3rem; right: 4.7rem; font-size: 1.2rem; line-height: 1; pointer-events: none;
-  transform-origin: 50% 0; transform: translateY(100%) scaleY(-1); }
-@keyframes hw-columpio { from { rotate: -7deg; } to { rotate: 7deg; } }
+/* 4 · Cabecera: guirnalda de luces que titilan por turnos (A y B), nieve cayendo y nieve acumulada sobre las tarjetas (todo decorativo: sin clics ni cambios de tamaño) */
+html[data-evento="navidad"] header::before, html[data-evento="navidad"] header::after {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; z-index: 1; height: 1.5rem; pointer-events: none;
+  background-repeat: repeat-x; background-position: 0 0; background-size: 96px 24px; }
+html[data-evento="navidad"] header::before { background-image: var(--nav-luces-a); }
+html[data-evento="navidad"] header::after { background-image: var(--nav-luces-b); }
+@keyframes nav-titilar { from { opacity: .4; } to { opacity: 1; } }
 @media (prefers-reduced-motion: no-preference) {
-  html[data-evento="halloween"] :is(#cart, #avisos):not([inert]) :is(.safe-cart-top, .safe-avisos-top)::after, html[data-evento="halloween"] header::after { animation: hw-columpio 3.8s ease-in-out infinite alternate; }
+  html[data-evento="navidad"] header::before { animation: nav-titilar 1.4s ease-in-out infinite alternate; }
+  html[data-evento="navidad"] header::after { animation: nav-titilar 1.4s ease-in-out -.7s infinite alternate; }
+}
+/* Nieve: las brasas que app.js ya pone en la cabecera, pintadas de copos y cayendo en vez de subir (con «reducir movimiento» app.js no las crea) */
+@keyframes nav-nieve { 0% { transform: translate(0, 0); opacity: 0; } 12% { opacity: .95; } 100% { transform: translate(-28px, 62vh); opacity: 0; } }
+html[data-evento="navidad"] .ember { top: -10px; bottom: auto; background: #fff; box-shadow: 0 0 6px 1px rgb(255 255 255 / .75); animation-name: nav-nieve; }
+html[data-evento="navidad"] .ember:nth-child(4n) { background: rgb(var(--nav-oro)); box-shadow: 0 0 6px 1px rgb(var(--nav-oro) / .7); }
+html[data-evento="navidad"][data-theme="light"] .ember { box-shadow: 0 0 0 1px rgb(100 150 175 / .5), 0 0 6px 1px rgb(130 185 210 / .55); }
+html[data-evento="navidad"][data-theme="light"] .ember:nth-child(4n) { box-shadow: 0 0 6px 1px rgb(var(--nav-oro) / .55); }
+/* Nieve acumulada en el borde de arriba de cada tarjeta (debajo de la estrella de favoritos y de la etiqueta de promo, que empiezan más abajo) */
+html[data-evento="navidad"] .menu-card { position: relative; }
+html[data-evento="navidad"] .menu-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; z-index: 1; height: .95rem; pointer-events: none;
+  background: var(--nav-nieve-img) repeat-x 0 0 / 96px 15px; }
+
+/* 5 · Paneles laterales: borde verde, mini guirnalda en el borde de arriba y un adorno colgando de un hilo dorado */
+html[data-evento="navidad"] :is(#cart, #avisos) { border-left-color: rgb(var(--nav-verde) / .55); }
+/* El halo verde solo va con el panel ABIERTO: cerrado (inert) el panel espera fuera de pantalla y su sombra se asomaría por el borde derecho */
+html[data-evento="navidad"] :is(#cart, #avisos):not([inert]) { box-shadow: -16px 0 44px -18px rgb(var(--nav-verde) / .55), 0 25px 50px -12px rgba(0, 0, 0, .55); }
+html[data-evento="navidad"][data-theme="light"] :is(#cart, #avisos):not([inert]) { box-shadow: -16px 0 40px -18px rgb(var(--nav-verde) / .35), 0 25px 50px -12px rgba(0, 0, 0, .25); }
+html[data-evento="navidad"] :is(.safe-cart-top, .safe-avisos-top) { position: relative; border-bottom-color: rgb(var(--nav-oro) / .4); }
+html[data-evento="navidad"] .safe-cart-bottom { border-top-color: rgb(var(--nav-oro) / .4); }
+html[data-evento="navidad"] :is(.safe-cart-top, .safe-avisos-top)::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; z-index: -1; height: 1.1rem; pointer-events: none;
+  background: var(--nav-luces-ab) repeat-x 0 0 / 72px 18px; opacity: .9; }
+html[data-evento="navidad"] :is(.safe-cart-top, .safe-avisos-top)::after {   /* adorno colgado de un hilo */
+  content: "⭐"; content: "⭐" / ""; position: absolute; top: 0; right: 4.7rem; padding-top: 1.9rem; font-size: 1.15rem; line-height: 1; pointer-events: none;
+  background: linear-gradient(rgb(var(--nav-oro) / .85), rgb(var(--nav-oro) / .85)) 50% 0 / 1px 1.75rem no-repeat; transform-origin: 50% 0; }
+html[data-evento="navidad"] .safe-avisos-top::after { content: "🔔"; content: "🔔" / ""; }
+@keyframes nav-columpio { from { rotate: -7deg; } to { rotate: 7deg; } }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-evento="navidad"] :is(#cart, #avisos):not([inert]) :is(.safe-cart-top, .safe-avisos-top)::after { animation: nav-columpio 3.8s ease-in-out infinite alternate; }
 }
 
-/* 5 · Botones «Agregar al carrito»: telarañas sutiles en dos esquinas (tinta oscura sobre el naranja neón).
-   Decorativas: sin clics y sin tocar el texto ni el tamaño del botón (se recortan con sus bordes redondeados). */
-html[data-evento="halloween"] .btn-fire[data-add] { position: relative; overflow: hidden; }
-html[data-evento="halloween"] .btn-fire[data-add]::before, html[data-evento="halloween"] .btn-fire[data-add]::after {
-  content: ""; position: absolute; width: clamp(1.8rem, 16%, 2.6rem); aspect-ratio: 1; pointer-events: none;
-  background: rgb(var(--hw-noche)); opacity: .3; -webkit-mask: var(--hw-tela-img) top right / contain no-repeat; mask: var(--hw-tela-img) top right / contain no-repeat; }
-html[data-evento="halloween"] .btn-fire[data-add]::before { top: 0; right: 0; }
-html[data-evento="halloween"] .btn-fire[data-add]::after { bottom: 0; left: 0; transform: rotate(180deg); }
-
-/* ═════════════════ PLANTILLA · EVENTO NUEVO (Navidad, Verano, Pascua…) ═════════════════
+/* ═════════════════ PLANTILLA · EVENTO NUEVO (Verano, Pascua, Día de la Madre…) ═════════════════
    El próximo evento se suma con DOS pasos, sin tocar ninguna lógica: (1) una sección como esta en este archivo y (2) cambiar activeEvent en event-manager.js.
    Cómo usarla:
-     1. Copiá las líneas que están entre las flechas ▼ y ▲, pegalas ARRIBA de este comentario (debajo de la sección de Halloween) y cambiá NOMBRE por el
-        nombre del evento: en minúsculas, sin espacios ni tildes (navidad, verano, pascua…). Es el mismo nombre que va en activeEvent.
-     2. --evento-nombre y --evento-emoji son lo que dice el interruptor de «Mi cuenta» («🎄 Tema de Navidad»): escribí el emoji tal cual, entre comillas.
+     1. Copiá las líneas que están entre las flechas ▼ y ▲, pegalas ARRIBA de este comentario (debajo de la sección de Navidad) y cambiá NOMBRE por el
+        nombre del evento: en minúsculas, sin espacios ni tildes (verano, pascua…). Es el mismo nombre que va en activeEvent.
+     2. --evento-nombre y --evento-emoji son lo que dice el interruptor de «Mi cuenta» («☀️ Tema de Verano»): escribí el emoji tal cual, entre comillas.
      3. Poné los colores del evento. Los que trae la plantilla son los de siempre de Z18: lo que no cambies queda igual (pegada tal cual no cambia ningún color).
         · Los acentos son canales RGB separados por espacios («255 85 0»), no #hex ni rgb(): así andan los degradés y las transparencias. Fondos y bordes, en #hex.
         · --z-fire y --z-fire-deep = el naranja de marca (íconos, precios, bordes, botones) · --z-gold = el dorado (subtítulos, enlaces, foco, puntos, misiones)
@@ -461,7 +486,7 @@ html[data-evento="halloween"] .btn-fire[data-add]::after { bottom: 0; left: 0; t
         · Cada color que cambies en el bloque OSCURO cambialo también en el CLARO, algo más oscuro: en modo claro tiene que leerse sobre fondo blanco (contraste AA,
           4,5 a 1 para texto). Los «-ink», «-line» y «-deep» son las versiones oscuras del dorado y de la estrella para ese modo.
      4. Opcional: lo que un cambio de color no resuelve (emojis en los títulos con ::before, brillos, detalles en los paneles) se arma como en la sección de
-        Halloween de arriba, siempre colgado de html[data-evento="NOMBRE"].
+        Navidad de arriba, siempre colgado de html[data-evento="NOMBRE"].
      5. Decorado dinámico (copos, murciélagos…) y logo propio no van acá: van en una entrada de EVENTS en event-manager.js (ese archivo lo explica).
    Los colores del indicador Abierto / Cerrado (--estado-*) no se tocan: verde, ámbar y rojo se entienden en cualquier evento.
    ▼▼▼ COPIAR DESDE ACÁ ▼▼▼
