@@ -34,7 +34,7 @@
 <meta name="twitter:description" content="Hamburguesas artesanales, combos, milanesas y pizzetas. Delivery rápido en Paso de la Arena, Montevideo.">
 <meta name="twitter:image" content="https://z18-web.vercel.app/compartir.jpg">
 
-<!-- Datos para Google (resultados con horarios, teléfono y «cómo llegar»). Tiene que decir lo MISMO que se ve en la página: horarios = tabla HORARIO de app.js y «Nuestros horarios» de #info; teléfono = el WhatsApp de #info -->
+<!-- Datos para Google (resultados con horarios y teléfono). Tiene que decir lo MISMO que se ve en la página: horarios = tabla HORARIO de app.js y «Nuestros horarios» de #info; teléfono = el WhatsApp de #info -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -235,12 +235,11 @@
         <p class="mt-2 text-muted"><svg class="ico mr-2 text-fire" viewBox="0 0 640 512" aria-hidden="true" focusable="false"><use href="#i-motorcycle"/></svg>Delivery rápido</p>
         <a data-wa href="https://wa.me/59892061753" target="_blank" rel="noopener" class="btn-wa mt-5 flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 font-extrabold">
           <svg class="ico text-xl" viewBox="0 0 448 512" aria-hidden="true" focusable="false"><use href="#i-whatsapp"/></svg> Pedidos: 092 061 753</a>
-        <!-- Cómo llegar: abre la ficha de Z18 en Google Maps (place id de la ficha). Llamar: el mismo teléfono de los pedidos. Calificanos: abre directo el formulario de reseña de esa ficha. Compartir: menú de compartir del celular (o copia el enlace) -->
+        <!-- Llamar: el mismo teléfono de los pedidos. Calificanos: abre directo el formulario de reseña de la ficha de Google (place id de la ficha). Compartir: menú de compartir del celular (o copia el enlace). Sin «Cómo llegar» a pedido del local: la web no muestra mapa ni dirección exacta -->
         <div class="mt-3 grid grid-cols-2 gap-3">
-          <a href="https://www.google.com/maps/search/?api=1&amp;query=Z18+Hamburgueser%C3%ADa&amp;query_place_id=ChIJ-e4VuX3VoZURFuHWkyB98es" target="_blank" rel="noopener" class="btn-ghost flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold"><svg class="ico text-fire" viewBox="0 0 384 512" aria-hidden="true" focusable="false"><use href="#i-location-dot"/></svg> Cómo llegar</a>
           <a href="tel:+59892061753" class="btn-ghost flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold"><svg class="ico text-fire" viewBox="0 0 512 512" aria-hidden="true" focusable="false"><use href="#i-phone"/></svg> Llamar</a>
           <a href="https://search.google.com/local/writereview?placeid=ChIJ-e4VuX3VoZURFuHWkyB98es" target="_blank" rel="noopener" class="btn-ghost flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold"><svg class="ico text-gold" viewBox="0 0 576 512" aria-hidden="true" focusable="false"><use href="#i-star"/></svg> Calificanos</a>
-          <button type="button" data-compartir class="btn-ghost flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold"><svg class="ico text-fire" viewBox="0 0 448 512" aria-hidden="true" focusable="false"><use href="#i-share-nodes"/></svg> Compartir</button>
+          <button type="button" data-compartir class="btn-ghost col-span-2 flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold"><svg class="ico text-fire" viewBox="0 0 448 512" aria-hidden="true" focusable="false"><use href="#i-share-nodes"/></svg> Compartir</button>
         </div>
       </div>
       <div class="panel">
