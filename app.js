@@ -2223,6 +2223,22 @@ document.addEventListener('click', async e => {
   } else toast('Tocá «Compartir» ⬆️ y elegí «Agregar a pantalla de inicio»', 6000);
 });
 
+/* ── COMPARTIR LA WEB ──────────────────────────────────────────────────────────
+   El botón «Compartir la web» (en Ubicación) abre el menú de compartir del celular (WhatsApp, Instagram, Telegram…) con el enlace de la web; si el navegador no lo tiene
+   (escritorio), copia el enlace y avisa. El enlace sale de la dirección canónica de index.html: si cambian de dominio, se cambia en un solo lugar. */
+document.addEventListener('click', async e => {
+  if (!e.target.closest('[data-compartir]')) return;
+  vibrate();
+  const url = (document.querySelector('link[rel="canonical"]') || {}).href || location.origin + '/';
+  const datos = { title: 'Z18 Hamburguesería Artesanal & Grill', text: 'Pedí en Z18 🍔🔥 Hamburguesas artesanales con delivery en Paso de la Arena', url };
+  if (navigator.share) {
+    try { await navigator.share(datos); } catch (err) { /* la persona cerró el menú de compartir: no es un error */ }
+    return;
+  }
+  try { await navigator.clipboard.writeText(url); toast('Enlace copiado 📋 Pegalo donde quieras compartirlo'); }
+  catch (err) { window.open('https://wa.me/?text=' + encodeURIComponent(datos.text + ' ' + url), '_blank', 'noopener'); }
+});
+
 /* ── SIN CONEXIÓN ─────────────────────────────────────────────────────────────────────────────────────────────────────
    sw.js (ver su encabezado) guarda la web en el celular: abre más rápido y, sin señal, muestra el menú que ya se vio. Pedir sí necesita internet
    (WhatsApp y la cocina): al cortarse o volver la conexión, un aviso lo dice. */
