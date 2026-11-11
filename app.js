@@ -141,7 +141,7 @@ const hhmm = min => `${String(Math.floor(min / 60) % 24).padStart(2, '0')}:${Str
 const alCabo = (fn, ms) => setTimeout(fn, Math.min(Math.max(ms, 0) + 1000, 2147483647));
 
 /* ── HORARIO DEL LOCAL · indicador «Abierto / Cerrado» de la cabecera ──────────────────────────────────────────────────
-   ✏️ HORARIO es la ÚNICA tabla que hay que editar: el indicador lee de acá. Tiene que decir lo mismo que «Nuestros horarios» del pie (index.html, sección #info):
+   ✏️ HORARIO es la ÚNICA tabla que hay que editar: el indicador lee de acá. Tiene que decir lo mismo que «Nuestros horarios» del pie (index.html, sección #info) y que los datos para Google (bloque JSON-LD del <head>):
    si cambiás uno, cambiá el otro (test_horario.py lo comprueba). Los días que no figuran (lunes y martes) están cerrados.
       dias    → 'lun' 'mar' 'mie' 'jue' 'vie' 'sab' 'dom'      abre / cierra → 'HH:MM' en hora de Montevideo; '24:00' = medianoche; un turno puede pasar de
       la medianoche ('26:00' = 02:00 de la madrugada siguiente). Un mismo día puede tener varios turnos (dos filas con ese día).
@@ -976,6 +976,7 @@ const avisarCocina = () => {
 const goToWhatsApp = () => {
   updateSend();
   const snap = { items: Object.entries(cart).map(([n, q]) => ({ n, q, p: PRICE[n] })), total: total(), note: $('note').value.trim() };
+  if (snap.items.length) guardarUltimo(snap);                           // «Lo de siempre»: el último pedido queda en este celular (sección «LO DE SIEMPRE»)
   const ref = avisarCocina();                                           // síncrono: window.open sigue dentro del toque del cliente (si no, el navegador bloquea la ventana)
   if (ref) $('send').href = waRaw(orderText(ref));                      // el mismo código que ve la cocina: cliente y local se entienden por «Pedido N° ABCD»
   window.open($('send').href, '_blank', 'noopener');
@@ -1583,6 +1584,7 @@ const ordenHistorial = () => {
 // Las misiones siguen leyendo TODOS los pedidos que trae la cuenta (userOrders), no solo los que se ven acá.
 const renderHistory = () => {
   programarAvisos();                                                                  // pedidos / favoritos cambiaron: la campanita se entera
+  pintarSiempre();                                                                    // …y la tarjeta «Lo de siempre» del inicio
   const lista = ordenHistorial(), total = lista.length, n = Math.min(histVisibles, total);
   $('orderHistory').innerHTML = total ? lista.slice(0, n).map(historyItem).join('')
     : `<p class="py-4 text-center text-sm text-muted">Todavía no hiciste ningún pedido.</p>`;
@@ -1692,22 +1694,61 @@ const toggleFavorite = async name => {
 
 // Repetir pedido: vuelve a meter esos mismos productos en el carrito y lo abre.
 // Un ítem canjeado se repite al precio normal del producto equivalente del menú; las pizzetas canjeadas no tienen equivalente y se omiten.
-const repeatOrder = id => {
-  const o = userOrders.find(x => x.id === id);
-  if (!o) return;
-  let n = 0, skipped = 0;
-  (o.items || []).forEach(it => {
+// itemsParaRepetir: qué productos del menú vuelve a pedir un pedido viejo → { items: [[nombre, cantidad]], omitidos } (omitidos = canjes sin equivalente en el menú).
+const itemsParaRepetir = o => {
+  const items = []; let omitidos = 0;
+  (Array.isArray(o.items) ? o.items : []).forEach(it => {
+    if (!it || typeof it !== 'object') return;                                // un renglón dañado (null, un número…) se ignora: no rompe la web
     const raw = String(it.n), canje = REWARD_SUFFIX.test(raw), nombre = raw.replace(REWARD_SUFFIX, '');
     const rew = canje ? RECOMPENSAS_Z.find(r => r.name === nombre) : null;   // por nombre: vale aunque el costo en puntos haya cambiado desde ese pedido
     const base = rew ? (rew.menu || '') : nombre;
     const q = Math.min(Math.floor(it.q) || 0, 99);
-    if (!base || PRICE[base] === undefined || q < 1) { if (canje) skipped++; return; }   // un producto que ya no está en el menú se omite
-    cart[base] = (cart[base] || 0) + q; n++;
+    if (!base || !Object.prototype.hasOwnProperty.call(PRICE, base) || q < 1) { if (canje) omitidos++; return; }   // un producto que ya no está en el menú se omite
+    items.push([base, q]);
   });
-  if (!n) { toast(skipped ? 'Ese pedido solo tenía canjes de Puntos Z. Canjeá de nuevo en Mi cuenta.' : 'Esos productos ya no están en el menú'); return; }
-  renderCart(); closeAuth(); setCart(true);
-  toast(skipped ? 'Sumamos ese pedido (sin los canjes de Puntos Z)' : 'Sumamos ese pedido a tu carrito');
+  return { items, omitidos };
 };
+const repetirPedido = o => {
+  const { items, omitidos } = itemsParaRepetir(o);
+  if (!items.length) { toast(omitidos ? 'Ese pedido solo tenía canjes de Puntos Z. Canjeá de nuevo en Mi cuenta.' : 'Esos productos ya no están en el menú'); return; }
+  items.forEach(([base, q]) => { cart[base] = (cart[base] || 0) + q; });
+  renderCart(); closeAuth(); setCart(true);
+  toast(omitidos ? 'Sumamos ese pedido (sin los canjes de Puntos Z)' : 'Sumamos ese pedido a tu carrito');
+};
+const repeatOrder = id => {
+  const o = userOrders.find(x => x.id === id);
+  if (o) repetirPedido(o);
+};
+
+/* ══════════════════════════════ LO DE SIEMPRE · pedir de nuevo con un toque ══════════════════════════════
+   La tarjeta «Lo de siempre» (index.html, #siempre, arriba del menú) vuelve a armar el pedido anterior del cliente. De dónde sale ese pedido:
+     · con sesión: su pedido favorito (⭐ del historial) o, si no marcó ninguno, el más reciente (ordenHistorial()[0], los últimos 10 que trae la cuenta);
+     · sin sesión (o con la cuenta todavía sin pedidos): el último que mandó desde ESTE celular (localStorage `z18_ultimo`, lo guarda goToWhatsApp; se borra al cerrar sesión).
+   Solo se vuelve a pedir lo que sigue en el menú y a los precios de hoy (itemsParaRepetir): lo que ya no existe se omite. Si no queda nada, la tarjeta no aparece.
+   Tocar «Pedir de nuevo» hace lo mismo que «Repetir pedido» del historial: suma esos productos al carrito y lo abre; el pedido se confirma y se manda como siempre. */
+const ULTIMO_KEY = 'z18_ultimo';
+const guardarUltimo = snap => {
+  try { localStorage.setItem(ULTIMO_KEY, JSON.stringify({ items: snap.items.map(({ n, q }) => ({ n, q })), total: snap.total, ts: Date.now() })); } catch (e) {}
+  pintarSiempre();
+};
+const limpiarUltimo = () => { try { localStorage.removeItem(ULTIMO_KEY); } catch (e) {} };
+const leerUltimo = () => { try { const u = JSON.parse(localStorage.getItem(ULTIMO_KEY)); return u && Array.isArray(u.items) ? u : null; } catch (e) { return null; } };
+const pedidoDeSiempre = () => {
+  const o = (user && user.uid ? ordenHistorial()[0] : null) || leerUltimo();
+  if (!o) return null;
+  const { items } = itemsParaRepetir(o);
+  return items.length ? { o, items, total: items.reduce((t, [n, q]) => t + PRICE[n] * q, 0) } : null;
+};
+const pintarSiempre = () => {
+  const p = pedidoDeSiempre();
+  $('siempre').hidden = !p;
+  if (!p) return;
+  const txt = p.items.slice(0, 3).map(([n, q]) => `${q}× ${n}`).join(', ');
+  $('siempreResumen').textContent = p.items.length > 3 ? `${txt} y ${p.items.length - 3} más` : txt;
+  $('siempreTotal').textContent = money(p.total);
+  $('siempreTitulo').textContent = p.o.fav === true ? 'Tu pedido favorito' : 'Lo de siempre';
+};
+$('siempreBtn').onclick = () => { const p = pedidoDeSiempre(); if (p) { vibrate(); repetirPedido(p.o); } };
 
 /* ══════════════════════════════ AVISOS · LA CAMPANITA 🔔 ════════════════════════════════════════════════
    La campanita de la barra superior cuenta los avisos SIN LEER y abre un panel lateral (como el del carrito) con la lista.
@@ -2022,6 +2063,7 @@ $('authBack').onclick = () => $('auth').dataset.view === 'register' ? show('logi
 $('logout').onclick = () => {
   user = null; try { localStorage.removeItem('z18_session'); } catch (e) {}
   limpiarEntrega();                                                        // los datos de entrega no se quedan en un dispositivo compartido
+  limpiarUltimo();                                                         // …ni «lo de siempre»
   loadFirebase().then(f => f.signOut(f.auth)).catch(() => {});   // correo, Google o Facebook: las 3 cierran sesión en Firebase
   puntosZ = lifetimeZ = 0; bono500Z = false; misionesZ = {}; semBorrador = {}; semMsg = {}; semEnCurso = {}; semVista = null; clearTimeout(lunesTimer); canjeArmado = null; msgCodigoZ(''); $('zCode').value = ''; favoriteBurger = paymentMethod = kitchenNotes = ''; userOrders = []; favEnVuelo.clear(); histVisibles = HIST_INICIAL; prefsDirty = false; perfilListo = false; setPrefsMsg('');   // que la próxima cuenta no vea estos datos
   paintProfile();
@@ -2142,7 +2184,7 @@ NAV.forEach(([id]) => io.observe($(id)));
 // Botones estáticos de WhatsApp con mensaje precargado
 document.querySelectorAll('[data-wa]').forEach(a => { a.href = wa(''); });
 
-// El logo (assets/logo.webp) ya está referenciado en el HTML: hero, footer, cabecera del modal y favicon
+// El logo (logo.webp) ya está referenciado en el HTML: hero, footer, cabecera del modal y favicon
 $('yr').textContent = new Date().getFullYear();
 
 // Brasas flotando en el header (se omiten con "reducir movimiento")
@@ -2154,3 +2196,40 @@ if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
     $('embers').appendChild(e);
   }
 }
+
+/* ================= 7) LA WEB COMO APP: INSTALAR, SIN CONEXIÓN ================= */
+/* ── INSTALAR LA APP ──────────────────────────────────────────────────────────────────────────────────────────────────
+   La web se puede instalar en el celular (manifest.webmanifest + sw.js + íconos): queda un ícono en la pantalla de inicio y abre sin la barra del navegador.
+     · Android, Chrome, Edge: el navegador avisa con `beforeinstallprompt`; se guarda ese aviso y el botón «Instalar la app de Z18» lo dispara.
+     · iPhone / iPad: Safari no tiene ese aviso; el botón explica el camino («Compartir» → «Agregar a pantalla de inicio»).
+     · Si ya se abrió como app instalada, si el navegador no puede instalar o si se está dentro del navegador de Instagram / Facebook / TikTok (ahí no se puede),
+       el botón no aparece: los contenedores [data-instalar-caja] (pie de página) siguen ocultos. */
+let avisoInstalar = null;                                              // el evento beforeinstallprompt, guardado hasta que el cliente toque «Instalar»
+const comoApp = () => { try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } };
+const esApple = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const syncInstalar = () => {
+  const ver = !comoApp() && !IN_APP && (!!avisoInstalar || esApple());          // IN_APP: el navegador interno de Instagram, Facebook, TikTok… no puede instalar
+  document.querySelectorAll('[data-instalar-caja]').forEach(c => { c.hidden = !ver; });
+};
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); avisoInstalar = e; syncInstalar(); });
+addEventListener('appinstalled', () => { avisoInstalar = null; syncInstalar(); toast('¡Listo! Z18 quedó en tu pantalla de inicio'); });
+document.addEventListener('click', async e => {
+  if (!e.target.closest('[data-instalar]')) return;
+  vibrate();
+  if (avisoInstalar) {
+    const a = avisoInstalar; avisoInstalar = null;                     // el aviso se puede usar una sola vez
+    try { a.prompt(); await a.userChoice; } catch (err) {}
+    syncInstalar();
+  } else toast('Tocá «Compartir» ⬆️ y elegí «Agregar a pantalla de inicio»', 6000);
+});
+
+/* ── SIN CONEXIÓN ─────────────────────────────────────────────────────────────────────────────────────────────────────
+   sw.js (ver su encabezado) guarda la web en el celular: abre más rápido y, sin señal, muestra el menú que ya se vio. Pedir sí necesita internet
+   (WhatsApp y la cocina): al cortarse o volver la conexión, un aviso lo dice. */
+addEventListener('offline', () => toast('Sin conexión: podés ver el menú, pero para pedir necesitás internet', 4200));
+addEventListener('online', () => toast('Volvió la conexión 👌'));
+if (navigator.onLine === false) toast('Sin conexión: podés ver el menú, pero para pedir necesitás internet', 4200);
+if ('serviceWorker' in navigator) addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });   // si no se puede (navegador viejo, modo privado…), la web anda igual
+
+syncInstalar();
+pintarSiempre();

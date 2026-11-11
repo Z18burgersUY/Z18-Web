@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://z18-web.vercel.app/sitemap.xml

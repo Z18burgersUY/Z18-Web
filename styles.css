@@ -5,7 +5,7 @@
   --z-ink: #ffffff; --z-muted: #e2e8f0; --z-muted2: #94a3b8;
 
   /* Acentos de marca como canales RGB («255 85 0»): se usan como rgb(var(--z-fire)) o rgb(var(--z-fire) / .4), y Tailwind los lee para fire y gold
-     (ver tailwind.config en index.html). Un evento temático (Navidad, Verano…) solo tiene que redefinirlos en html[data-evento="…"]. */
+     (ver la configuración de Tailwind en el encabezado de tailwind.css). Un evento temático (Navidad, Verano…) solo tiene que redefinirlos en html[data-evento="…"]. */
   --z-fire: 255 85 0;        /* naranja de marca: íconos, precios, bordes al pasar el mouse */
   --z-fire-deep: 217 56 0;   /* naranja oscuro: etiqueta de promo y final del degradé de los botones */
   --z-gold: 255 183 0;       /* dorado: subtítulos, enlaces, anillo de foco, puntos, misiones */
