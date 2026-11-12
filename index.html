@@ -307,20 +307,12 @@
   </div>
   <div id="cartScroll" class="flex-1 overflow-y-auto">
     <div id="cartItems" class="space-y-3 p-4"></div>
-    <!-- Datos del pedido: la cocina los necesita para preparar y entregar (nombre, teléfono y retiro / delivery con dirección). Se recuerdan en este dispositivo. La lógica está en app.js («DATOS DE ENTREGA») -->
+    <!-- Datos del pedido: la cocina los necesita para preparar y entregar (nombre, teléfono y dirección de entrega: solo delivery, sin retiro en el local). Se recuerdan en este dispositivo. La lógica está en app.js («DATOS DE ENTREGA») -->
     <form id="cartDatos" novalidate hidden aria-labelledby="entTitulo" class="space-y-3 border-t border-cardborder p-4">
       <div>
         <h3 id="entTitulo" class="font-display text-2xl tracking-wide">Tus datos para el pedido</h3>
         <p class="text-xs text-muted">Solo para preparar y entregar tu pedido. Se guardan en este dispositivo para la próxima.</p>
       </div>
-      <fieldset id="entTipoGrupo" role="radiogroup" aria-labelledby="entTipoLeyenda" aria-describedby="entTipoErr" class="m-0 min-w-0 border-0 p-0">
-        <legend id="entTipoLeyenda" class="mb-2 text-sm font-semibold text-ink">¿Cómo lo querés recibir?</legend>
-        <div class="ent-opciones">
-          <label class="ent-label"><input type="radio" name="entTipo" value="retiro" class="ent-radio"><span class="ent-op">Retiro en el local</span></label>
-          <label class="ent-label"><input type="radio" name="entTipo" value="delivery" class="ent-radio"><span class="ent-op">Delivery</span></label>
-        </div>
-        <p id="entTipoErr" class="err ent-err" role="alert"></p>
-      </fieldset>
       <div>
         <label for="entNombre" class="mb-1 block text-sm font-semibold text-ink">Tu nombre</label>
         <input id="entNombre" enterkeyhint="next" type="text" class="inp" autocomplete="name" maxlength="60" placeholder="Ej: Ana Pérez" aria-describedby="entNombreErr">
@@ -331,7 +323,7 @@
         <input id="entTelefono" enterkeyhint="next" type="tel" class="inp" inputmode="tel" autocomplete="tel" maxlength="24" placeholder="Ej: 099 123 456" aria-describedby="entTelefonoErr">
         <p id="entTelefonoErr" class="err ent-err" role="alert"></p>
       </div>
-      <div id="entDireccionWrap" hidden>
+      <div id="entDireccionWrap">
         <label for="entDireccion" class="mb-1 block text-sm font-semibold text-ink">Dirección de entrega</label>
         <input id="entDireccion" enterkeyhint="next" type="text" class="inp" autocomplete="street-address" maxlength="200" placeholder="Calle, número y esquina o referencia" aria-describedby="entDireccionErr">
         <p id="entDireccionErr" class="err ent-err" role="alert"></p>

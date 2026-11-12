@@ -42,7 +42,8 @@ const MENU = {
     { n: 'Combo Clásica 18', p: 455, im: 'clasica', d: 'Hamburguesa + papas + bebidas' },
     { n: 'Combo Smash', p: 495, im: 'smash', d: 'Hamburguesa + papas + bebidas' },
     { n: 'Combo The Bunker', p: 575, im: 'bunker', d: 'Hamburguesa + papas + bebidas' },
-    { n: 'Combo Salchipapa Z18', p: 465, im: 'salchipapa', d: 'Con bebida' }
+    { n: 'Combo Crispy BBQ', p: 605, im: 'crispy', d: 'Hamburguesa + papas + bebidas' },
+    { n: 'Combo Salchipapa Z18', p: 466, im: 'salchipapa', d: 'Con bebida' }
   ],
   milas: [   // Milanesas al plato (todas XL, todas con papas fritas)
     { n: 'Napolitana al plato con papas fritas', p: 520, im: 'napo1', d: 'Milanesa XL con salsa, jamón, mozzarella y papas fritas.' },
@@ -393,10 +394,10 @@ const orderText = ref => {
   const prefs = user && (paymentMethod || kitchenNotes)
     ? '\n\n' + [paymentMethod && `Método de pago preferido: ${paymentMethod}`, kitchenNotes && `Notas de cocina: ${kitchenNotes}`].filter(Boolean).join('\n')
     : '';
-  const dest = d.tipo === 'retiro' ? '\n\nRetiro en el local' : d.tipo === 'delivery' && d.direccion ? `\n\nDelivery a: ${d.direccion}` : '';
+  const dest = d.direccion ? `\n\nDelivery a: ${d.direccion}` : '';
   return `¡Hola Z18! ${who}Quiero hacer este pedido:\n\n`
     + Object.entries(cart).map(([n, q]) => `• ${q} x ${n} — ${money(PRICE[n] * q)}`).join('\n')
-    + `\n\nTotal: ${money(total())}${d.tipo === 'retiro' ? '' : ' (envío a coordinar)'}` + dest + (note ? `\n\nAclaraciones: ${note}` : '') + prefs + (ref ? `\n\nPedido N° ${ref}` : '');
+    + `\n\nTotal: ${money(total())} (envío a coordinar)` + dest + (note ? `\n\nAclaraciones: ${note}` : '') + prefs + (ref ? `\n\nPedido N° ${ref}` : '');
 };
 const updateSend = () => { $('send').href = count() ? waRaw(orderText()) : '#'; };
 
@@ -487,26 +488,25 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('cart')
 $('note').addEventListener('input', updateSend);
 
 /* ── DATOS DE ENTREGA ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-   Lo que la cocina necesita para preparar y entregar el pedido: retiro o delivery (con dirección), nombre y teléfono. Son obligatorios.
+   Lo que la cocina necesita para preparar y entregar el pedido: nombre, teléfono y dirección de entrega. Son obligatorios. Solo hay delivery: no se ofrece retiro en el local
+   (el tipo de entrega viaja siempre como «delivery»; si un dispositivo había guardado «retiro» de antes, se ignora).
    Se rellenan solos con lo último que se usó en este dispositivo (localStorage z18_pedido) o con los datos de la cuenta, y se borran al cerrar sesión.
    Van en el mensaje de WhatsApp y, con cocina.js, también a la pantalla de cocina (admin.html). Los límites son los mismos que valida firestore.rules. */
 const ENT_KEY = 'z18_pedido', ENT_MIN_DIRECCION = 5;
-const ENT_CAMPOS = ['tipo', 'nombre', 'telefono', 'direccion'];
-const ENT_ID = { tipo: 'entTipo', nombre: 'entNombre', telefono: 'entTelefono', direccion: 'entDireccion' };
+const ENT_CAMPOS = ['nombre', 'telefono', 'direccion'];
+const ENT_ID = { nombre: 'entNombre', telefono: 'entTelefono', direccion: 'entDireccion' };
 const ENT_MSG = {
-  tipo: 'Elegí cómo querés recibir tu pedido.',
   nombre: 'Escribí tu nombre (mínimo 2 letras).',
   telefono: 'Escribí un teléfono válido, por ejemplo 099 123 456.',
   direccion: 'Escribí la dirección de entrega: calle, número y esquina o referencia.'
 };
-const entRadio = () => document.querySelector('input[name="entTipo"]:checked');
 const limpioEnt = t => String(t == null ? '' : t).replace(/\s+/g, ' ').trim();
-const datosEntrega = () => ({ tipo: entRadio() ? entRadio().value : '', nombre: limpioEnt($('entNombre').value), telefono: limpioEnt($('entTelefono').value), direccion: limpioEnt($('entDireccion').value) });
+const datosEntrega = () => ({ tipo: 'delivery', nombre: limpioEnt($('entNombre').value), telefono: limpioEnt($('entTelefono').value), direccion: limpioEnt($('entDireccion').value) });
 const telefonoOk = t => { const f = window.Z18Cocina && window.Z18Cocina.telefono; return typeof f === 'function' ? !!f(t) : /^\d{8,15}$/.test(String(t).replace(/\D/g, '')); };   // la misma regla que usa cocina.js (099 123 456 → 598 99 123 456)
-const entMal = (campo, d) => campo === 'tipo' ? !d.tipo : campo === 'nombre' ? d.nombre.length < 2 : campo === 'telefono' ? !telefonoOk(d.telefono) : d.tipo === 'delivery' && d.direccion.length < ENT_MIN_DIRECCION;
+const entMal = (campo, d) => campo === 'nombre' ? d.nombre.length < 2 : campo === 'telefono' ? !telefonoOk(d.telefono) : d.direccion.length < ENT_MIN_DIRECCION;
 const entPintar = (campo, msg) => {                   // aviso rojo debajo del campo (y aria-invalid para los lectores de pantalla)
   $(ENT_ID[campo] + 'Err').textContent = msg || '';
-  const el = campo === 'tipo' ? $('entTipoGrupo') : $(ENT_ID[campo]);
+  const el = $(ENT_ID[campo]);
   if (msg) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid');
 };
 // mostrar = true: marca lo que falta y lleva el foco al primer campo incompleto. Devuelve true si está todo bien.
@@ -514,12 +514,11 @@ const validarEntrega = (mostrar = false) => {
   const d = datosEntrega(), malos = ENT_CAMPOS.filter(c => entMal(c, d));
   if (mostrar) {
     ENT_CAMPOS.forEach(c => entPintar(c, malos.includes(c) ? ENT_MSG[c] : ''));
-    if (malos.length) (malos[0] === 'tipo' ? document.querySelector('input[name="entTipo"]') : $(ENT_ID[malos[0]])).focus();
+    if (malos.length) $(ENT_ID[malos[0]]).focus();
   }
   return !malos.length;
 };
 const entRefrescar = () => { const d = datosEntrega(); ENT_CAMPOS.forEach(c => { if ($(ENT_ID[c] + 'Err').textContent && !entMal(c, d)) entPintar(c, ''); }); };   // al corregir un campo su aviso se va solo
-const verDireccion = () => { $('entDireccionWrap').hidden = !(entRadio() && entRadio().value === 'delivery'); };                                                    // la dirección solo se pide para delivery
 const guardarEntrega = () => { try { const d = datosEntrega(); localStorage.setItem(ENT_KEY, JSON.stringify({ nombre: d.nombre, telefono: d.telefono, tipoEntrega: d.tipo, direccion: d.direccion })); } catch (e) {} };
 const leerEntrega = () => { try { const o = JSON.parse(localStorage.getItem(ENT_KEY)); return o && typeof o === 'object' && !Array.isArray(o) ? o : {}; } catch (e) { return {}; } };
 const cargarEntrega = () => {                         // rellena SOLO los campos vacíos: no pisa lo que la persona está escribiendo
@@ -527,21 +526,19 @@ const cargarEntrega = () => {                         // rellena SOLO los campos
   poner('entNombre', txt(g.nombre) || (user && user.name));
   poner('entTelefono', txt(g.telefono) || (user && user.phone));
   poner('entDireccion', txt(g.direccion));
-  if (!entRadio() && (g.tipoEntrega === 'retiro' || g.tipoEntrega === 'delivery')) document.querySelector(`input[name="entTipo"][value="${g.tipoEntrega}"]`).checked = true;
-  verDireccion(); updateSend();
+  updateSend();
 };
 const limpiarEntrega = () => {                        // al cerrar sesión no queda nada de la persona anterior, ni en pantalla ni en el dispositivo
   ['entNombre', 'entTelefono', 'entDireccion'].forEach(id => { $(id).value = ''; });
-  document.querySelectorAll('input[name="entTipo"]').forEach(r => { r.checked = false; });
   try { localStorage.removeItem(ENT_KEY); } catch (e) {}
   ENT_CAMPOS.forEach(c => entPintar(c, ''));
-  verDireccion(); updateSend();
+  updateSend();
 };
-$('cartDatos').addEventListener('input', () => { verDireccion(); guardarEntrega(); entRefrescar(); updateSend(); });
-$('cartDatos').addEventListener('change', () => { verDireccion(); guardarEntrega(); entRefrescar(); updateSend(); });
+$('cartDatos').addEventListener('input', () => { guardarEntrega(); entRefrescar(); updateSend(); });
+$('cartDatos').addEventListener('change', () => { guardarEntrega(); entRefrescar(); updateSend(); });
 $('cartDatos').addEventListener('submit', e => { e.preventDefault(); validarEntrega(true); });        // (por si algún navegador envía el formulario con Enter: no recarga la página)
 $('cartDatos').addEventListener('keydown', e => {                      // Enter pasa al campo siguiente (en el celular el teclado muestra «Siguiente») y en el último cierra el teclado
-  if (e.key !== 'Enter' || e.isComposing || e.target.tagName !== 'INPUT' || e.target.type === 'radio') return;
+  if (e.key !== 'Enter' || e.isComposing || e.target.tagName !== 'INPUT') return;
   e.preventDefault();
   const orden = ['entNombre', 'entTelefono', 'entDireccion', 'note'].map($).filter(el => el && el.offsetParent !== null), i = orden.indexOf(e.target);
   if (i >= 0 && i < orden.length - 1) orden[i + 1].focus(); else e.target.blur();
