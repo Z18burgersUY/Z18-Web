@@ -1,41 +1,48 @@
-# Z18 · Solo delivery, combos del flyer y fotos livianas que faltaban
+# Z18 · La oferta de papas al enviar el pedido
 
-Se apoya en las entregas 15, 16 y 17. Revisé tu repositorio (último cambio: 11/11, 20:10) y esas tres ya están subidas, **salvo 4 archivos de fotos** (más abajo).
+Se apoya en la entrega 18, que ya está subida (revisé tu repositorio: último cambio 12/11, 18:47, y los 7 archivos son idénticos a los que probé).
 
-Son **7 archivos**, completos, que **reemplazan** a los que ya están en la raíz del repo de la web. Se suben juntos, en una sola subida: `index.html`, `app.js`, `tailwind.css`, `napo1.js`, `salchipapa.js`, `smash.js` y `z18.js`. `LEEME.md` no se sube. No cambian el panel de cocina, Firebase, las reglas de Firestore ni `vercel.json`.
+Es **1 solo archivo**, completo, que **reemplaza** al que ya está en la raíz del repo de la web: **`app.js`**. No cambian `index.html`, `tailwind.css`, las fotos, el panel de cocina, Firebase, las reglas de Firestore ni `vercel.json`. `LEEME.md` no se sube.
 
-**`index.html` y `app.js` van sí o sí juntos, en la misma subida.** Lo probé: con uno solo de los dos (el otro viejo), el formulario del pedido queda a medias y **no se puede mandar ningún pedido** hasta subir el que falta (con el `app.js` nuevo y el `index.html` viejo la dirección no aparece; con el `index.html` nuevo y el `app.js` viejo el formulario da error).
+## Lo de tu captura
+
+En tu carrito había tres hamburguesas (Z18 Original, Smash y Crispy BBQ). Las hamburguesas ya traen papas (la carta lo dice: «Todas incluyen papas fritas»), así que ahí lo que corresponde es la mejora: «¿Deseas agregar Cheddar y Bacon a tus papas por $50?». Así lo definiste desde el principio y **eso no cambia**.
+
+Pero revisando el código encontré fallas reales en esa lógica y armé el orden que describís (sin papas → primero papas fritas; con papas → la mejora con cheddar y bacon).
 
 ## Qué cambia
 
-**1. Sin «Retiro en el local».** En «Tus datos para el pedido» (el carrito) ya no está la elección retiro / delivery. Quedan **nombre, teléfono y dirección de entrega**, y la dirección se pide siempre (mínimo 5 caracteres). El mensaje de WhatsApp termina con «Delivery a: <dirección>». Todos los pedidos que llegan al panel de cocina salen como **Delivery**.
+La oferta «¡Coronemos el pedido!» (la que sale al tocar «Enviar pedido por WhatsApp») queda así:
 
-Los celulares que ya habían guardado sus datos con «retiro» siguen viendo su nombre y su teléfono. Si tenían una dirección vieja guardada, aparece escrita en el formulario (la pueden corregir); si no, la escriben. Nunca sale un pedido de retiro. El panel de cocina no cambia: los pedidos de retiro que ya estén cargados se siguen viendo.
+- **Hay papas comunes en el carrito** (hamburguesas, combos, milanesas al plato, menú de reclutas o «Papas fritas»): ofrece la mejora, **Cheddar y Bacon por $50**. Igual que antes.
+- **No hay papas** (por ejemplo, solo una bebida): primero ofrece **una porción de Papas fritas ($180)**. Si las agrega, enseguida pregunta por la mejora de Cheddar y Bacon ($50) sobre esas papas, en el mismo cartel. Antes ofrecía de entrada las «Papas con Cheddar y Bacon» a $230.
+- **Todas las papas ya traen cheddar y bacon** (Papas con cheddar y bacon, Salchipapa Z18 y el combo Salchipapa, también si se canjearon con Puntos Z): no ofrece nada y WhatsApp se abre directo. Antes les preguntaba «¿agregar Cheddar y Bacon a tus papas?», que no tiene sentido.
 
-**2. Combos (según tu flyer).**
-- **Salchipapa Z18 combo:** de $465 a **$466**.
-- **Combo Crispy BBQ:** nuevo, **$605**, con la foto de la Crispy BBQ. Queda entre The Bunker y Salchipapa, como en el flyer, y con la misma descripción que los otros (hamburguesa + papas + bebidas). Se pide igual que los demás: entra al carrito, al mensaje de WhatsApp (con la oferta de Cheddar y Bacon de siempre) y al panel de cocina como «1 x Combo Crispy BBQ».
-- Los otros cuatro ya coincidían con el flyer: Z18 Original $445, Clásica 18 $455, Smash $495 y The Bunker $575. También comprobé que los «por separado» del flyer ($459, $469, $509, $589, $619 y $480) salen de la carta (hamburguesa o salchipapa + Coca-Cola 600 ml) y que cada combo ahorra $14.
-- Quien repita un pedido o use «Lo de siempre» con el combo Salchipapa lo paga al precio nuevo.
+También se corrigió que el **Menú de reclutas** (Z-Junior Burger y Z-Junior Nuggets, que «incluye papas fritas») no contaba como papas: a quien pedía solo eso le ofrecía una porción nueva de $230 en vez de la mejora de $50.
 
-**3. Fotos livianas que faltaban (de la entrega 15).** `napo1.js`, `salchipapa.js`, `smash.js` y `z18.js` seguían siendo los pesados de antes (cada uno unos 200 KB). Con los livianos la web baja unos **350 KB menos** y se ve igual. En los celulares que ya habían entrado, la foto liviana se nota desde la segunda visita (la web muestra primero lo que tenía guardado y se actualiza sola).
+Lo demás sigue igual: la mejora de $50 se suma **una vez por pedido** (no por porción; quien quiera más usa el «+» en el carrito), cada oferta se muestra como máximo **2 veces** si dicen «No, gracias» (las dos cuentan por separado), y si la mejora ya está en el carrito no se vuelve a ofrecer.
 
-**4. `tailwind.css`.** Se van 3 reglas de diseño que usaba el grupo de opciones que se sacó. Es limpieza: si no lo subís, no pasa nada.
+Un detalle: cuando agregan las papas y aparece la pregunta de la mejora, el cartel tarda menos de medio segundo en aceptar toques, para que un doble toque en «Agregar» no conteste también la segunda pregunta sin querer.
 
 ## Subir y probar
 
-Subí los 7 archivos, esperá a que Vercel publique (uno o dos minutos) y probá en el celular:
-1. En **Combos** tienen que verse 6 tarjetas, con **Combo Crispy BBQ $605** y **Combo Salchipapa Z18 $466**.
-2. Agregá un combo, abrí el carrito y mirá «Tus datos para el pedido»: *Tu nombre*, *Tu teléfono* y *Dirección de entrega*, sin «Retiro en el local».
-3. Probá enviar **sin dirección** (tiene que avisar y no abrir WhatsApp) y **con dirección** (abre WhatsApp con «Delivery a: …» y el pedido aparece en el panel de cocina como Delivery).
+Subí `app.js`, esperá a que Vercel publique (uno o dos minutos), recargá la web y probá en el celular:
+1. Con **solo una Coca-Cola**, tocá «Enviar pedido»: tiene que preguntar por **Papas fritas $180**. Tocá «Agregar»: tiene que preguntar por **Cheddar y Bacon $50**. Tocá «Agregar»: abre WhatsApp con las tres líneas y **Total: $320**.
+2. Con **una hamburguesa**: pregunta directo por la mejora de $50.
+3. Con una **Salchipapa Z18** sola: no pregunta nada y abre WhatsApp.
 
 ## Cómo se probó
 
-Navegador real, celular y escritorio, sobre estos mismos archivos:
-- Lo que ya existía sigue igual: **135** verificaciones del carrito y el pedido (suman las del formulario sin retiro), **150** de la Navidad, **534** del panel de cocina y **16** punta a punta. Las reglas de Firestore no cambian (**779** casos).
-- Comparación pantalla por pantalla (**38** pantallas, celular y escritorio, claro y oscuro): **0 diferencias** contra lo que tenés publicado hoy en GitHub y **0 diferencias** contra la web de antes de la web rápida (con lo nuevo escondido). En las dos se deja aparte solo lo que cambió a propósito: el grupo retiro/delivery, la dirección siempre a la vista y la tarjeta del combo nuevo.
-- Lo nuevo (web rápida, Calificanos/Compartir, cabeceras, esta entrega): **348** verificaciones. Incluyen que el único cambio frente a lo publicado sea el del retiro y los combos, que los seis combos tengan el precio del flyer y la foto de su hamburguesa, y que el Combo Crispy BBQ llegue a la cocina.
-- **39** roturas a propósito en lo nuevo (por ejemplo, que vuelva el retiro, que el combo Salchipapa vuelva a $465 o que el Combo Crispy BBQ salga con otra foto): las pruebas detectaron las 39.
-- Simulación de la subida (tu repositorio de hoy + estos 7 archivos): todo en verde, y cada archivo de la web queda idéntico al que probé.
+Navegador real, celular y escritorio, sobre este mismo archivo:
+- Lo que ya existía sigue igual: **136** verificaciones del carrito y el pedido (una más que antes: la del flujo nuevo), **150** de la Navidad, **534** del panel de cocina y **16** punta a punta. Las reglas de Firestore no cambian (**779** casos).
+- Comparación pantalla por pantalla (**38** pantallas, celular y escritorio, claro y oscuro): **0 diferencias** contra lo que tenés publicado hoy en GitHub y **0 diferencias** contra la web de antes de la web rápida (con lo nuevo escondido).
+- Lo nuevo y la web rápida: **372** verificaciones. Las de esta entrega incluyen **24 carritos distintos** (hamburguesas, combos, milanesas, reclutas, papas, Salchipapa, bebidas, pizzas, extras y productos canjeados con Puntos Z) con lo que debe ofrecer cada uno, el paso de las papas a la mejora, el límite de 2 «No, gracias» por oferta, el doble toque, Escape y tocar afuera, y que a la cocina llegue el pedido completo (bebida + papas + mejora = $320; tres hamburguesas + mejora = $1.367, como en tu captura). También comprueba que el único archivo que cambia respecto de tu repositorio es `app.js`, y solo en el bloque de la oferta.
+- **57** roturas a propósito en lo nuevo (por ejemplo, que el menú de reclutas deje de contar como papas, que la Salchipapa vuelva a recibir la mejora, que se ofrezca tres veces en vez de dos o que el doble toque conteste las dos preguntas): las pruebas detectaron las 57.
+- Simulación de la subida (tu repositorio de hoy + este archivo): todo en verde, y `app.js` queda idéntico al que probé.
 
 **Lo que no pude hacer:** verlo en un celular real ni en tu Vercel.
+
+## Si querés otra cosa
+
+- Si las hamburguesas sueltas en realidad **no** traen papas y querés que igual se ofrezcan papas fritas, decímelo: es cambiar la lista de categorías que cuentan como papas.
+- Sigue pendiente la línea del carrito «Envío — A coordinar por WhatsApp» (y «envío a coordinar» en el mensaje): como el delivery es gratis, se puede cambiar por «Envío gratis».

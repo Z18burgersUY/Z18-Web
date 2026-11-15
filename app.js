@@ -940,26 +940,37 @@ const closeAuth = () => {
 };
 
 // ---- Upsell al finalizar el pedido: modal con 2 condiciones + límite de rechazos -----
+//   A · el carrito ya trae papas fritas comunes (las de hamburguesas, combos, milanesas al plato, menú de reclutas o «Papas fritas») → ofrece Cheddar y Bacon sobre esas papas por $50
+//   B · el carrito no trae papas (ej. solo una bebida) → primero ofrece una porción de «Papas fritas»; si la agrega, enseguida viene la A para esas papas
+//   Las papas que ya traen cheddar y bacon (Papas con cheddar y bacon, Salchipapa Z18 y su combo) no tienen nada que mejorar ni que agregar: no se ofrece nada
 const UPSELL_A_NAME = 'Mejora de papas: cheddar y bacon';          // línea nueva, no es un producto real del menú
 const UPSELL_A_PRICE = 50;
 PRICE[UPSELL_A_NAME] = UPSELL_A_PRICE;
-const UPSELL_B_NAME = 'Papas con cheddar y bacon';                 // ya existe en MENU.minutas a $230
-const PAPAS_ALWAYS_CATS = ['burgers', 'combos', 'milas']; // categorías que siempre incluyen papas (hamburguesas —Crispy BBQ incluida—, combos y milanesas al plato)
-const PAPAS_MINUTAS = ['Papas fritas', 'Papas con cheddar y bacon', 'Salchipapa Z18']; // minutas que ya son papas
+const UPSELL_B_NAME = 'Papas fritas';                              // ya existe en MENU.minutas a $180
+const PAPAS_COMUNES_CATS = ['burgers', 'combos', 'milas', 'kids']; // categorías que siempre incluyen papas fritas (hamburguesas —Crispy BBQ incluida—, combos, milanesas al plato y menú de reclutas)
+const PAPAS_COMUNES_MINUTAS = ['Papas fritas'];                    // minutas que son papas fritas comunes
+const PAPAS_CON_CHEDDAR = ['Papas con cheddar y bacon', 'Salchipapa Z18', 'Combo Salchipapa Z18'];   // ya traen cheddar y bacon (la Salchipapa además lleva pancho y huevo)
+const REWARD_CON_CHEDDAR = new Set(RECOMPENSAS_Z.filter(r => r.papas && PAPAS_CON_CHEDDAR.includes(r.menu)).map(r => r.name));   // la recompensa «Papas Cheddar & Bacon»
 
-// ¿El carrito actual ya trae papas de algún tipo? (Condición A si true, Condición B si false)
-const cartHasPapas = () => Object.keys(cart).some(n => {
+// Qué papas trae un renglón del carrito: 'comunes' (papas fritas sin cheddar: se pueden mejorar), 'cheddar' (ya traen cheddar y bacon) o null (no trae papas)
+const papasDe = n => {
   const base = n.replace(REWARD_SUFFIX, '');                        // un ítem canjeado cuenta como el producto real que es
-  if (REWARD_SUFFIX.test(n) && REWARD_PAPAS.has(base)) return true;   // papas canjeadas con Puntos Z (Papas Fritas / Cheddar & Bacon), con el costo que tuvieran
+  if (REWARD_SUFFIX.test(n) && REWARD_PAPAS.has(base)) return REWARD_CON_CHEDDAR.has(base) ? 'cheddar' : 'comunes';   // papas canjeadas con Puntos Z (Papas Fritas / Cheddar & Bacon), con el costo que tuvieran
+  if (PAPAS_CON_CHEDDAR.includes(base)) return 'cheddar';
   const cat = CATEGORY_OF[base];
-  if (PAPAS_ALWAYS_CATS.includes(cat)) return true;
-  if (cat === 'minutas' && PAPAS_MINUTAS.includes(base)) return true;
-  return false;
-});
+  return PAPAS_COMUNES_CATS.includes(cat) || (cat === 'minutas' && PAPAS_COMUNES_MINUTAS.includes(base)) ? 'comunes' : null;
+};
+// Qué papas hay en el carrito ahora: 'comunes' → Condición A · 'ninguna' → Condición B · 'cheddar' → todas ya traen cheddar y bacon (sin oferta)
+const papasEnCarrito = () => {
+  const tipos = Object.keys(cart).map(papasDe);
+  return tipos.includes('comunes') ? 'comunes' : tipos.includes('cheddar') ? 'cheddar' : 'ninguna';
+};
 
 let rejectCountA = 0;       // veces que rechazó la oferta de $50 (cheddar y bacon sobre papas ya pedidas)
-let rejectCountB = 0;       // veces que rechazó la oferta de $230 (porción de papas con cheddar y bacon)
+let rejectCountB = 0;       // veces que rechazó la oferta de las papas fritas ($180)
 let activeUpsell = null;    // 'A' | 'B' | null: qué oferta está mostrando el modal ahora mismo
+let upsellListoEn = 0;      // performance.now() desde el que se puede contestar: al pasar de la pregunta de las papas a la de la mejora, un doble toque en «Agregar» no contesta también la segunda
+const upsellListo = () => performance.now() >= upsellListoEn;
 
 // Manda el pedido a la pantalla de cocina (cocina.js). Devuelve el código de 4 letras con el que quedó («Pedido N° ABCD») o '' si no se pudo: el WhatsApp sale igual.
 const notasCocina = () => [$('note').value.trim(), user && kitchenNotes ? `Notas de cocina: ${kitchenNotes}` : '', user && paymentMethod ? `Método de pago preferido: ${paymentMethod}` : ''].filter(Boolean).join('\n');
@@ -986,17 +997,18 @@ const recordOrder = async snap => {
   loadProfile();
 };
 
-// Devuelve true si abrió el modal; false si no corresponde mostrar ninguna oferta (bloqueada o ya la tiene)
+// Devuelve true si dejó el modal abierto con una oferta; false si no corresponde ninguna (bloqueada, ya la tiene o las papas ya traen cheddar y bacon)
 const openUpsell = () => {
-  if (cartHasPapas()) {
+  const papas = papasEnCarrito();
+  if (papas === 'comunes') {
     if (rejectCountA >= 2 || cart[UPSELL_A_NAME]) return false;
     activeUpsell = 'A';
     $('upsellText').innerHTML = `¿Deseas agregar <b class="text-ink">Cheddar y Bacon</b> a tus papas por <b class="text-gold">${money(UPSELL_A_PRICE)}</b>?`;
-  } else {
-    if (rejectCountB >= 2 || cart[UPSELL_B_NAME]) return false;
+  } else if (papas === 'ninguna') {
+    if (rejectCountB >= 2) return false;
     activeUpsell = 'B';
-    $('upsellText').innerHTML = `¿Deseas agregar una porción de <b class="text-ink">Papas con Cheddar y Bacon</b> por <b class="text-gold">${money(PRICE[UPSELL_B_NAME])}</b>?`;
-  }
+    $('upsellText').innerHTML = `¿Deseas agregar una porción de <b class="text-ink">Papas fritas</b> por <b class="text-gold">${money(PRICE[UPSELL_B_NAME])}</b>?`;
+  } else return false;                                              // 'cheddar': todas las papas ya traen cheddar y bacon
   $('upsell').classList.remove('hidden'); $('upsellOverlay').classList.remove('hidden'); $('upsell').inert = false;
   lock(true); document.body.style.overflow = 'hidden'; $('upsellNo').focus();
   return true;
@@ -1011,8 +1023,10 @@ const rejectUpsell = () => {
   closeUpsell(); goToWhatsApp();
 };
 const acceptUpsell = () => {
-  if (activeUpsell === 'A') change(UPSELL_A_NAME, 1); else if (activeUpsell === 'B') change(UPSELL_B_NAME, 1);
+  const oferta = activeUpsell;
   activeUpsell = null;
+  if (oferta === 'A') change(UPSELL_A_NAME, 1); else if (oferta === 'B') change(UPSELL_B_NAME, 1);
+  if (oferta === 'B' && openUpsell()) { upsellListoEn = performance.now() + 450; return; }   // ya tiene papas: sigue la mejora con cheddar y bacon (el mismo cartel, otra pregunta)
   closeUpsell(); goToWhatsApp();
 };
 $('send').addEventListener('click', e => {
@@ -1021,10 +1035,10 @@ $('send').addEventListener('click', e => {
   if (!validarEntrega(true)) { toast('Completá tus datos para enviar el pedido.', 2600); return; }   // sin nombre, teléfono y entrega la cocina no puede preparar ni entregar
   if (!openUpsell()) goToWhatsApp();          // ofertas bloqueadas o ya agregadas: directo a WhatsApp
 });
-$('upsellNo').onclick = () => { vibrate(); rejectUpsell(); };
-$('upsellYes').onclick = () => { vibrate(); acceptUpsell(); };
-$('upsellOverlay').onclick = () => { rejectUpsell(); };
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('upsell').classList.contains('hidden')) rejectUpsell(); });
+$('upsellNo').onclick = () => { if (!upsellListo()) return; vibrate(); rejectUpsell(); };
+$('upsellYes').onclick = () => { if (!upsellListo()) return; vibrate(); acceptUpsell(); };
+$('upsellOverlay').onclick = () => { if (upsellListo()) rejectUpsell(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('upsell').classList.contains('hidden') && upsellListo()) rejectUpsell(); });
 /* ── Perfil: favorita (⭐ del menú), Puntos Z, preferencias e historial — todo en Firestore ── */
 const PAY_METHODS = ['Efectivo', 'Transferencia', 'Débito'];
 const FAV_ITEMS = [...MENU.burgers];                                   // las hamburguesas que llevan estrella (Crispy BBQ incluida)
