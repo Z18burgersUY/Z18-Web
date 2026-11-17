@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Política de privacidad | Z18 Hamburguesería Artesanal & Grill</title>
+<meta name="description" content="Cómo cuida Z18 tus datos: qué pedimos al hacer un pedido o crear una cuenta, para qué los usamos, con quién los compartimos y cómo corregirlos o borrarlos.">
+<meta name="theme-color" content="#0a0b0d">
+<link rel="canonical" href="https://z18-web.vercel.app/privacidad.html">
+<link rel="icon" type="image/webp" href="logo.webp">
+<script>try{if(localStorage.getItem('z18_theme')==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+
+<!-- Mismas tipografías y mismos estilos que la web (tailwind.css ya compilado + styles.css). Esta página solo usa clases que ya existen ahí; todo lo demás está en el <style> de abajo, así que no hace falta volver a generar tailwind.css -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tailwind.css">
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* Página de texto: columna angosta y cómoda de leer; los colores salen de las variables de styles.css (modo claro y oscuro) */
+  .legal-top { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .5rem 1rem; padding-top: calc(.5rem + env(safe-area-inset-top));
+               background: var(--z-bg); border-bottom: 1px solid var(--z-border); }
+  .legal-marca { display: inline-flex; min-width: 0; align-items: center; gap: .6rem; min-height: 2.75rem; font: 400 1.35rem/1 'Bebas Neue', sans-serif; letter-spacing: .06em; color: var(--z-ink); text-decoration: none; }
+  .legal-marca img { flex-shrink: 0; width: 2.5rem; height: 2.5rem; object-fit: contain; }
+  .legal-marca span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* si la tipografía de la marca no llegó, el nombre se recorta en vez de pasar a dos renglones */
+  .legal-volver { display: inline-flex; flex-shrink: 0; align-items: center; min-height: 2.75rem; white-space: nowrap; font-size: .875rem; font-weight: 700; color: var(--z-ink); text-decoration: underline; text-decoration-color: rgb(var(--z-fire)); text-underline-offset: 4px; }
+  .legal { max-width: 44rem; margin: 0 auto; padding: 2rem 1rem 5rem; }
+  .legal h1 { font: 400 clamp(2.4rem, 8vw, 3.4rem)/1.05 'Bebas Neue', sans-serif; letter-spacing: .05em; color: var(--z-ink); }
+  .legal .fecha { margin-top: .5rem; font-size: .85rem; font-weight: 600; color: var(--z-muted); }
+  .legal .intro { margin-top: 1.25rem; font-size: 1.05rem; line-height: 1.7; color: var(--z-ink); }
+  .legal h2 { margin-top: 2.5rem; font: 400 1.8rem/1.1 'Bebas Neue', sans-serif; letter-spacing: .05em; color: var(--z-ink); }
+  .legal h2 .num { margin-right: .5rem; color: rgb(var(--z-fire)); }
+  [data-theme="light"] .legal h2 .num { color: rgb(var(--z-fire-deep)); }
+  .legal h3 { margin-top: 1.5rem; font-size: 1rem; font-weight: 800; color: var(--z-ink); }
+  .legal p, .legal li { font-size: .98rem; line-height: 1.7; color: var(--z-muted); }
+  .legal p { margin-top: .6rem; }
+  .legal ul { margin-top: .6rem; padding-left: 1.25rem; list-style: disc; }
+  .legal li { margin-top: .4rem; padding-left: .15rem; }
+  .legal li::marker { color: rgb(var(--z-fire)); }
+  .legal strong { color: var(--z-ink); }
+  .legal a:not(.btn-fire) { color: rgb(var(--z-gold)); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+  [data-theme="light"] .legal a:not(.btn-fire) { color: rgb(var(--z-gold-ink)); }
+  .legal .resumen { margin-top: 1.75rem; border-color: rgb(var(--z-fire) / .55); }
+  .legal .resumen h2 { margin-top: 0; font-size: 1.5rem; }
+  .legal .fin { margin-top: 3rem; text-align: center; }
+  .legal .fin a.btn-fire { display: inline-flex; min-height: 3rem; max-width: 100%; align-items: center; justify-content: center; padding: 0 1.5rem; border-radius: .75rem; font-size: 1.2rem; text-decoration: none; }   /* 19 px en negrita = «texto grande» (el blanco sobre el naranja da 3,2:1, que alcanza para eso) */
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+
+<body class="min-h-screen font-sans selection:bg-fire selection:text-white">
+
+<header class="legal-top">
+  <a href="./" class="legal-marca" aria-label="Z18 Hamburguesería: volver a la carta"><img src="logo.webp" width="40" height="40" alt="" onerror="this.onerror=null;this.src='assets/logo.webp'"><span>Z18 Hamburguesería</span></a>
+  <a href="./" class="legal-volver">Volver a la carta</a>
+</header>
+
+<main class="legal">
+  <h1>Política de privacidad</h1>
+  <p class="fecha">Última actualización: 16 de noviembre de 2026</p>
+  <p class="intro">En Z18 cuidamos tus datos. Acá te contamos, sin vueltas, qué datos te pedimos cuando usás esta web, para qué los usamos, con quién los compartimos y cómo podés pedirnos que los corrijamos o los borremos.</p>
+
+  <section class="panel resumen" aria-labelledby="resumen">
+    <h2 id="resumen">En resumen</h2>
+    <ul>
+      <li>Te pedimos solo lo necesario para preparar y entregar tu pedido.</li>
+      <li>No vendemos tus datos ni los usamos para publicidad de terceros.</li>
+      <li>Podés pedirnos que te mostremos, corrijamos o borremos tus datos cuando quieras: <a href="mailto:z18.burgers.uy@gmail.com">z18.burgers.uy@gmail.com</a>.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="responsable">
+    <h2 id="responsable"><span class="num">1</span>Quién es el responsable</h2>
+    <p>El responsable del tratamiento de tus datos es <strong>Z18 Hamburguesería Artesanal &amp; Grill</strong> («Z18»), de Paso de la Arena, Montevideo, Uruguay. Podés escribirnos por correo a <a href="mailto:z18.burgers.uy@gmail.com">z18.burgers.uy@gmail.com</a> o por WhatsApp al <a href="https://wa.me/59892061753" target="_blank" rel="noopener">092 061 753</a>.</p>
+  </section>
+
+  <section aria-labelledby="datos">
+    <h2 id="datos"><span class="num">2</span>Qué datos recopilamos y para qué</h2>
+
+    <h3>Cuando hacés un pedido</h3>
+    <p>Para preparar y entregar tu pedido te pedimos tu <strong>teléfono</strong> y tu <strong>dirección de entrega</strong>, y, si querés, tu <strong>nombre</strong>. Además registramos lo que pediste, el total y las aclaraciones que escribas (y, si tenés cuenta, el método de pago y las notas de cocina que guardaste en tu perfil). El teléfono y la dirección son obligatorios: sin ellos no podemos entregarte el pedido. El nombre es opcional: si no lo escribís, en la cocina figurás como «Cliente».</p>
+    <p>Los usamos solo para preparar el pedido, llevártelo y comunicarnos con vos por ese pedido. Al tocar «Enviar pedido por WhatsApp», el pedido llega a la cocina de Z18 a través de nuestro sistema de pedidos y se abre WhatsApp con el mensaje listo para que lo mandes.</p>
+
+    <h3>Si creás una cuenta (es opcional)</h3>
+    <p>Podés pedir sin cuenta. Si querés una, te pedimos nombre, apellido, correo electrónico, teléfono y una contraseña; o podés entrar con tu cuenta de Google o de Facebook, y en ese caso recibimos tu nombre, tu correo y tu foto de perfil.</p>
+    <p>Con tu cuenta guardamos tus <strong>Puntos Z</strong> (saldo, puntos acumulados, misiones completadas y códigos que canjeaste), tu hamburguesa favorita, tu método de pago preferido, tus notas habituales de cocina y el historial de tus pedidos, incluidos los que marcaste como favoritos. Los usamos para reconocerte, sumarte puntos y que repetir un pedido sea más rápido.</p>
+    <p>La contraseña la maneja el servicio de acceso de Google (Firebase Authentication): Z18 nunca la ve. El teléfono que ponés al crear la cuenta queda guardado solo en tu dispositivo.</p>
+
+    <h3>En tu dispositivo</h3>
+    <p>Para que la web funcione, tu navegador guarda en tu dispositivo (no en nuestros servidores) tu carrito, los datos de entrega que escribiste (nombre, si lo pusiste, teléfono y dirección, para que no tengas que escribirlos de nuevo), tu último pedido, la opción de modo claro u oscuro, tu sesión y la foto de perfil que elijas. También guarda copias de la web para que abra más rápido y sin conexión. Podés borrar todo eso cuando quieras desde los ajustes de tu navegador. No usamos cookies de publicidad ni de seguimiento, ni herramientas de analítica.</p>
+
+    <h3>Datos técnicos</h3>
+    <p>Como en cualquier sitio web, al abrir esta página tu navegador se conecta con el servicio donde está alojada (Vercel) y con servicios que le entregan tipografías, programas y algunas fotos (Google y Unsplash). Esos servicios reciben tu dirección IP y datos básicos de tu navegador. Z18 no usa esos datos para identificarte.</p>
+  </section>
+
+  <section aria-labelledby="compartimos">
+    <h2 id="compartimos"><span class="num">3</span>Con quién compartimos tus datos</h2>
+    <p>No vendemos ni alquilamos tus datos, y no los usamos para publicidad de terceros. Solo los compartimos con quienes hacen falta para que el servicio funcione:</p>
+    <ul>
+      <li><strong>El personal de Z18</strong> que prepara y entrega los pedidos. Los pedidos solo los puede ver el personal autorizado.</li>
+      <li><strong>Google (Firebase)</strong>, que aloja nuestra base de datos (pedidos, cuentas y Puntos Z) y el sistema de acceso con correo, Google o Facebook.</li>
+      <li><strong>Vercel</strong>, que aloja esta web.</li>
+      <li><strong>WhatsApp (Meta)</strong>, cuando enviás tu pedido por WhatsApp: el mensaje pasa por ese servicio, que lo trata según sus propias condiciones.</li>
+      <li><strong>Google o Facebook (Meta)</strong>, solo si elegís entrar con esas cuentas.</li>
+      <li><strong>Las autoridades</strong>, únicamente si una ley o una orden judicial nos obliga.</li>
+    </ul>
+    <p>Si algún día quisiéramos usar tus datos para otra cosa (por ejemplo, enviarte promociones), te lo vamos a pedir antes.</p>
+  </section>
+
+  <section aria-labelledby="donde">
+    <h2 id="donde"><span class="num">4</span>Dónde se guardan</h2>
+    <p>Los servicios de Google y de Vercel pueden tener sus servidores fuera de Uruguay, así que al usarlos tus datos pueden guardarse y tratarse en otros países.</p>
+  </section>
+
+  <section aria-labelledby="tiempo">
+    <h2 id="tiempo"><span class="num">5</span>Cuánto tiempo los guardamos</h2>
+    <p>Guardamos tus datos mientras sean necesarios para atenderte (preparar y entregar tus pedidos, mantener tus Puntos Z y tu historial) y para llevar el registro de ventas del local. Cuando dejan de ser necesarios, o si nos pedís que los borremos, los eliminamos, salvo lo que la ley nos obligue a conservar.</p>
+  </section>
+
+  <section aria-labelledby="derechos">
+    <h2 id="derechos"><span class="num">6</span>Tus derechos</h2>
+    <p>Según la Ley N.º 18.331 de Protección de Datos Personales de Uruguay, podés:</p>
+    <ul>
+      <li><strong>Saber</strong> qué datos tuyos tenemos y para qué los usamos (derecho de acceso).</li>
+      <li><strong>Corregir o actualizar</strong> los que estén mal o incompletos (derecho de rectificación y actualización).</li>
+      <li><strong>Pedir que los borremos</strong> (derecho de supresión).</li>
+    </ul>
+    <p>Para ejercer estos derechos escribinos a <a href="mailto:z18.burgers.uy@gmail.com">z18.burgers.uy@gmail.com</a> o por WhatsApp al <a href="https://wa.me/59892061753" target="_blank" rel="noopener">092 061 753</a> y contanos qué querés. Para cuidar tus datos te vamos a pedir que confirmes quién sos (por ejemplo, escribiéndonos desde el correo de tu cuenta o desde el teléfono con el que hiciste el pedido). Te respondemos dentro de los 5 días hábiles.</p>
+    <p>Si querés cerrar tu cuenta, pedínoslo y borramos tu cuenta y los datos asociados. Tené en cuenta que se pierden tus Puntos Z.</p>
+    <p>Si creés que no respetamos tus derechos, también podés presentar una denuncia ante la Unidad Reguladora y de Control de Datos Personales (URCDP): <a href="https://www.gub.uy/unidad-reguladora-control-datos-personales" target="_blank" rel="noopener">www.gub.uy/unidad-reguladora-control-datos-personales</a>.</p>
+  </section>
+
+  <section aria-labelledby="seguridad">
+    <h2 id="seguridad"><span class="num">7</span>Cómo cuidamos tus datos</h2>
+    <p>La web usa conexión cifrada (HTTPS). Las contraseñas las maneja Firebase Authentication de Google y Z18 nunca las ve. Las reglas de acceso de nuestra base de datos hacen que cada cuenta solo pueda ver sus propios datos y que los pedidos solo los vea el personal autorizado. Aun así, ningún sistema es infalible: si notás algo raro, avisanos.</p>
+  </section>
+
+  <section aria-labelledby="cambios">
+    <h2 id="cambios"><span class="num">8</span>Cambios en esta política</h2>
+    <p>Si cambiamos algo, publicamos la nueva versión en esta página y actualizamos la fecha de arriba.</p>
+  </section>
+
+  <section aria-labelledby="contacto">
+    <h2 id="contacto"><span class="num">9</span>Contacto</h2>
+    <p>Z18 Hamburguesería Artesanal &amp; Grill · Paso de la Arena, Montevideo, Uruguay<br>
+      Correo: <a href="mailto:z18.burgers.uy@gmail.com">z18.burgers.uy@gmail.com</a> · WhatsApp: <a href="https://wa.me/59892061753" target="_blank" rel="noopener">092 061 753</a></p>
+  </section>
+
+  <p class="fin"><a href="./" class="btn-fire">Volver a la carta</a></p>
+</main>
+
+</body>
+</html>

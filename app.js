@@ -336,6 +336,30 @@ const mapCat = (cat, list) => (list || []).forEach(it => { CATEGORY_OF[Array.isA
 ['burgers', 'combos', 'milas', 'pizzas', 'promos', 'kids', 'minutas', 'drinks', 'extras']
   .forEach(c => mapCat(c, MENU[c]));
 
+/* ── DATOS PARA GOOGLE · la carta ───────────────────────────────────────────────────────────────────────────────────────────────
+   index.html trae el bloque «Restaurant» (<script type="application/ld+json" id="ldRestaurante">) con una copia de la carta, para los buscadores que no ejecutan JavaScript.
+   Acá se vuelve a armar con MENU —la misma fuente que dibuja la carta que se ve— y con los títulos de sus secciones (data-t y data-s de index.html):
+   si cambiás un precio, un nombre o una descripción en MENU, los datos para Google quedan al día sin tocar index.html. Si algo falla, queda la copia de index.html y la web sigue igual.
+   Cada renglón: [id de la sección en index.html, claves de MENU que muestra, nombre propio (si no, el título de la sección)]. */
+const CARTA_GOOGLE = [
+  ['burgers', ['burgers']], ['combos', ['combos']], ['milanesas', ['milas']], ['pizzetas', ['pizzas', 'promos']],
+  ['reclutas', ['kids']], ['minutas', ['minutas']], ['bebidas', ['drinks'], 'Bebidas'], ['bebidas', ['extras'], 'Extras']
+];
+try {
+  const ldEl = $('ldRestaurante'), ld = JSON.parse(ldEl.textContent);
+  ld.hasMenu.hasMenuSection = CARTA_GOOGLE.map(([sec, claves, nombre]) => {
+    const t = $(sec).dataset;
+    return {
+      '@type': 'MenuSection', name: nombre || t.t, ...(!nombre && t.s ? { description: t.s } : {}),
+      hasMenuItem: claves.flatMap(k => MENU[k]).map(it => {
+        const [n, p, d] = Array.isArray(it) ? it : [it.n, it.p, it.d];          // los extras son pares [nombre, precio]
+        return { '@type': 'MenuItem', name: n, ...(d ? { description: d } : {}), offers: { '@type': 'Offer', price: String(p), priceCurrency: 'UYU' } };
+      })
+    };
+  });
+  ldEl.textContent = JSON.stringify(ld);
+} catch (err) { console.warn('[Z18] No se pudo actualizar la carta para Google (queda la copia de index.html):', err); }
+
 /* ── PUNTOS Z · catálogo de recompensas ───────────────────────────────────────────────
    Regla del programa: cada $25 de compra = 1 Punto Z (Z18 entrega un código con los puntos de cada pedido).
    ✏️ Para cambiar costos o productos editá SOLO esta lista:
@@ -390,7 +414,7 @@ const total = () => Object.entries(cart).reduce((s, [n, q]) => s + PRICE[n] * q,
 // ref (opcional): el código de 4 letras con el que el pedido quedó en la pantalla de cocina → «Pedido N° ABCD» al final del mensaje
 const orderText = ref => {
   const note = $('note').value.trim(), d = datosEntrega();
-  const who = d.nombre ? `Soy ${d.nombre}${d.telefono ? ' (' + d.telefono + ')' : ''}. ` : '';
+  const who = d.nombre ? `Soy ${d.nombre}${d.telefono ? ' (' + d.telefono + ')' : ''}. ` : d.telefono ? `Mi teléfono es ${d.telefono}. ` : '';   // sin nombre (es opcional) igual va el teléfono
   const prefs = user && (paymentMethod || kitchenNotes)
     ? '\n\n' + [paymentMethod && `Método de pago preferido: ${paymentMethod}`, kitchenNotes && `Notas de cocina: ${kitchenNotes}`].filter(Boolean).join('\n')
     : '';
@@ -488,22 +512,24 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('cart')
 $('note').addEventListener('input', updateSend);
 
 /* ── DATOS DE ENTREGA ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-   Lo que la cocina necesita para preparar y entregar el pedido: nombre, teléfono y dirección de entrega. Son obligatorios. Solo hay delivery: no se ofrece retiro en el local
-   (el tipo de entrega viaja siempre como «delivery»; si un dispositivo había guardado «retiro» de antes, se ignora).
+   Lo que la cocina necesita para preparar y entregar el pedido: teléfono y dirección de entrega (obligatorios) y el nombre (OPCIONAL, para quien compra sin cuenta: si lo escribe se guarda en el
+   dispositivo y sale con el pedido; si lo deja vacío, en la cocina figura como «Cliente», porque cocina.js y firestore.rules piden 2 letras como mínimo y así el pedido entra igual).
+   Solo hay delivery: no se ofrece retiro en el local (el tipo de entrega viaja siempre como «delivery»; si un dispositivo había guardado «retiro» de antes, se ignora).
    Se rellenan solos con lo último que se usó en este dispositivo (localStorage z18_pedido) o con los datos de la cuenta, y se borran al cerrar sesión.
    Van en el mensaje de WhatsApp y, con cocina.js, también a la pantalla de cocina (admin.html). Los límites son los mismos que valida firestore.rules. */
 const ENT_KEY = 'z18_pedido', ENT_MIN_DIRECCION = 5;
+const NOMBRE_SIN_DATO = 'Cliente';                    // cómo figura en la cocina quien no escribió su nombre
 const ENT_CAMPOS = ['nombre', 'telefono', 'direccion'];
 const ENT_ID = { nombre: 'entNombre', telefono: 'entTelefono', direccion: 'entDireccion' };
 const ENT_MSG = {
-  nombre: 'Escribí tu nombre (mínimo 2 letras).',
+  nombre: 'Escribí al menos 2 letras, o dejá el nombre vacío.',
   telefono: 'Escribí un teléfono válido, por ejemplo 099 123 456.',
   direccion: 'Escribí la dirección de entrega: calle, número y esquina o referencia.'
 };
 const limpioEnt = t => String(t == null ? '' : t).replace(/\s+/g, ' ').trim();
 const datosEntrega = () => ({ tipo: 'delivery', nombre: limpioEnt($('entNombre').value), telefono: limpioEnt($('entTelefono').value), direccion: limpioEnt($('entDireccion').value) });
 const telefonoOk = t => { const f = window.Z18Cocina && window.Z18Cocina.telefono; return typeof f === 'function' ? !!f(t) : /^\d{8,15}$/.test(String(t).replace(/\D/g, '')); };   // la misma regla que usa cocina.js (099 123 456 → 598 99 123 456)
-const entMal = (campo, d) => campo === 'nombre' ? d.nombre.length < 2 : campo === 'telefono' ? !telefonoOk(d.telefono) : d.direccion.length < ENT_MIN_DIRECCION;
+const entMal = (campo, d) => campo === 'nombre' ? d.nombre.length === 1 : campo === 'telefono' ? !telefonoOk(d.telefono) : d.direccion.length < ENT_MIN_DIRECCION;   // el nombre puede quedar vacío; lo que no sirve es una sola letra
 const entPintar = (campo, msg) => {                   // aviso rojo debajo del campo (y aria-invalid para los lectores de pantalla)
   $(ENT_ID[campo] + 'Err').textContent = msg || '';
   const el = $(ENT_ID[campo]);
@@ -978,7 +1004,7 @@ const avisarCocina = () => {
   try {
     if (!window.Z18Cocina) return '';
     const d = datosEntrega();
-    return window.Z18Cocina.registrar({ nombre: d.nombre, telefono: d.telefono, tipoEntrega: d.tipo, direccion: d.direccion, items: Object.entries(cart).map(([n, q]) => `${q} x ${n}`), notas: notasCocina(), total: total() }) || '';
+    return window.Z18Cocina.registrar({ nombre: d.nombre || NOMBRE_SIN_DATO, telefono: d.telefono, tipoEntrega: d.tipo, direccion: d.direccion, items: Object.entries(cart).map(([n, q]) => `${q} x ${n}`), notas: notasCocina(), total: total() }) || '';
   } catch (e) { console.error('[Z18] No se pudo avisar a la cocina:', e); return ''; }
 };
 const goToWhatsApp = () => {

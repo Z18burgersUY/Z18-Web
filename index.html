@@ -34,8 +34,9 @@
 <meta name="twitter:description" content="Hamburguesas artesanales, combos, milanesas y pizzetas. Delivery rápido en Paso de la Arena, Montevideo.">
 <meta name="twitter:image" content="https://z18-web.vercel.app/compartir.jpg">
 
-<!-- Datos para Google (resultados con horarios y teléfono). Tiene que decir lo MISMO que se ve en la página: horarios = tabla HORARIO de app.js y «Nuestros horarios» de #info; teléfono = el WhatsApp de #info -->
-<script type="application/ld+json">
+<!-- Datos para Google (resultados con horarios, teléfono y carta). Tiene que decir lo MISMO que se ve en la página: horarios = tabla HORARIO de app.js y «Nuestros horarios» de #info; teléfono = el WhatsApp de #info;
+     carta («hasMenu») = MENU de app.js: app.js la vuelve a armar sola al cargar (sección «DATOS PARA GOOGLE»), esta copia es para los buscadores que no ejecutan JavaScript. «menu» es la dirección de la carta (lo que Google documenta) -->
+<script type="application/ld+json" id="ldRestaurante">
 {
   "@context": "https://schema.org",
   "@type": "Restaurant",
@@ -49,7 +50,86 @@
   "telephone": "+59892061753",
   "email": "z18.burgers.uy@gmail.com",
   "servesCuisine": ["Hamburguesas", "Milanesas", "Pizzetas"],
-  "hasMenu": "https://z18-web.vercel.app/#burgers",
+  "menu": "https://z18-web.vercel.app/#burgers",
+  "hasMenu": {
+    "@type": "Menu",
+    "name": "Carta Z18",
+    "url": "https://z18-web.vercel.app/#burgers",
+    "inLanguage": "es-UY",
+    "hasMenuSection": [
+      {
+        "@type": "MenuSection", "name": "Hamburguesas", "description": "Todas incluyen papas fritas",
+        "hasMenuItem": [
+          { "@type": "MenuItem", "name": "Z18 Original", "description": "Res (100 g), bacon crocante, queso cheddar fundido, cebolla caramelizada y Salsa Z.", "offers": { "@type": "Offer", "price": "369", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Clásica 18", "description": "Res (100 g), lechuga fresca, tomate, queso cheddar fundido, cebolla caramelizada, huevo frito y Salsa Z.", "offers": { "@type": "Offer", "price": "379", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Smash", "description": "Doble medallón de res (2 x 100 g) estilo smash, queso cheddar fundido, bacon crocante, cebolla smash y Salsa Z.", "offers": { "@type": "Offer", "price": "419", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "The Bunker", "description": "Doble medallón de res (2 x 100 g), queso cheddar, jamón, mozzarella, bacon crocante, cebolla caramelizada, huevo frito y Salsa Z.", "offers": { "@type": "Offer", "price": "499", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Crispy BBQ", "description": "Doble medallón de res (2 x 100 g), queso cheddar fundido, panceta crocante, cebolla crispy, cebolla caramelizada, salsa BBQ y Salsa Z.", "offers": { "@type": "Offer", "price": "529", "priceCurrency": "UYU" } }
+        ]
+      },
+      {
+        "@type": "MenuSection", "name": "Combos Z18", "description": "Todos incluyen papas fritas + bebidas",
+        "hasMenuItem": [
+          { "@type": "MenuItem", "name": "Combo Z18 Original", "description": "Hamburguesa + papas + bebidas", "offers": { "@type": "Offer", "price": "445", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Combo Clásica 18", "description": "Hamburguesa + papas + bebidas", "offers": { "@type": "Offer", "price": "455", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Combo Smash", "description": "Hamburguesa + papas + bebidas", "offers": { "@type": "Offer", "price": "495", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Combo The Bunker", "description": "Hamburguesa + papas + bebidas", "offers": { "@type": "Offer", "price": "575", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Combo Crispy BBQ", "description": "Hamburguesa + papas + bebidas", "offers": { "@type": "Offer", "price": "605", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Combo Salchipapa Z18", "description": "Con bebida", "offers": { "@type": "Offer", "price": "466", "priceCurrency": "UYU" } }
+        ]
+      },
+      {
+        "@type": "MenuSection", "name": "Milanesas al plato", "description": "Todas XL",
+        "hasMenuItem": [
+          { "@type": "MenuItem", "name": "Napolitana al plato con papas fritas", "description": "Milanesa XL con salsa, jamón, mozzarella y papas fritas.", "offers": { "@type": "Offer", "price": "520", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Napolitana al plato para 2 personas", "description": "Milanesas XL para 2 personas con salsa, jamón, mozzarella y papas fritas.", "offers": { "@type": "Offer", "price": "990", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Milanesa al plato con cheddar y panceta", "description": "Milanesa XL con cheddar, panceta crocante y papas fritas.", "offers": { "@type": "Offer", "price": "520", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Milanesa para 2 con cheddar y panceta", "description": "Milanesas XL para 2 personas con cheddar, panceta crocante y papas fritas.", "offers": { "@type": "Offer", "price": "990", "priceCurrency": "UYU" } }
+        ]
+      },
+      {
+        "@type": "MenuSection", "name": "Pizzetas artesanales", "description": "Media masa · salsa estilo casera · horneada casera",
+        "hasMenuItem": [
+          { "@type": "MenuItem", "name": "Pizza al molde (sólo salsa)", "description": "Pizza al molde media masa, salsa estilo casera, horneada casera.", "offers": { "@type": "Offer", "price": "300", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Pizza al molde con muzzarella", "description": "Pizza al molde media masa, salsa estilo casera, horneada casera.", "offers": { "@type": "Offer", "price": "370", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Súper Promo Pizzeta", "description": "1 pizzeta con muzzarella + 3 gustos (de la lista de gustos) + 1 Coca-Cola 1,5 L.", "offers": { "@type": "Offer", "price": "730", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Súper Promo Dupla", "description": "2 pizzetas al molde con muzzarella + Coca-Cola 1,5 L ó 2 Smith44 (473 ml).", "offers": { "@type": "Offer", "price": "790", "priceCurrency": "UYU" } }
+        ]
+      },
+      {
+        "@type": "MenuSection", "name": "Menú de reclutas", "description": "Incluye papas fritas",
+        "hasMenuItem": [
+          { "@type": "MenuItem", "name": "Z-Junior Burger", "description": "Medallón 100 g, cheddar y Salsa Z.", "offers": { "@type": "Offer", "price": "299", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Z-Junior Nuggets", "description": "9 nuggets de pollo crujientes.", "offers": { "@type": "Offer", "price": "289", "priceCurrency": "UYU" } }
+        ]
+      },
+      {
+        "@type": "MenuSection", "name": "Minutas", "description": "Para acompañar o compartir",
+        "hasMenuItem": [
+          { "@type": "MenuItem", "name": "Papas fritas", "offers": { "@type": "Offer", "price": "180", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Papas con cheddar y bacon", "offers": { "@type": "Offer", "price": "230", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Salchipapa Z18", "description": "Papas fritas con pancho picado, bacon crocante, queso cheddar fundido y huevo frito.", "offers": { "@type": "Offer", "price": "390", "priceCurrency": "UYU" } }
+        ]
+      },
+      {
+        "@type": "MenuSection", "name": "Bebidas",
+        "hasMenuItem": [
+          { "@type": "MenuItem", "name": "Coca-Cola 600 ml", "offers": { "@type": "Offer", "price": "90", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Coca-Cola 1.5 L", "offers": { "@type": "Offer", "price": "180", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Smith44 (473 ml)", "offers": { "@type": "Offer", "price": "90", "priceCurrency": "UYU" } }
+        ]
+      },
+      {
+        "@type": "MenuSection", "name": "Extras",
+        "hasMenuItem": [
+          { "@type": "MenuItem", "name": "Medallón extra (100 g)", "offers": { "@type": "Offer", "price": "60", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Huevo frito", "offers": { "@type": "Offer", "price": "30", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Bacon crocante", "offers": { "@type": "Offer", "price": "40", "priceCurrency": "UYU" } },
+          { "@type": "MenuItem", "name": "Queso cheddar", "offers": { "@type": "Offer", "price": "40", "priceCurrency": "UYU" } }
+        ]
+      }
+    ]
+  },
   "currenciesAccepted": "UYU",
   "paymentAccepted": "Efectivo, Transferencia, Débito",
   "address": { "@type": "PostalAddress", "addressLocality": "Paso de la Arena", "addressRegion": "Montevideo", "addressCountry": "UY" },
@@ -281,6 +361,7 @@
   <!-- «Instalar la app»: oculto hasta que el navegador permite instalar (o, en iPhone, para explicar cómo). Lo maneja app.js, sección «INSTALAR LA APP» -->
   <div data-instalar-caja hidden class="mt-5"><button type="button" data-instalar class="btn-ghost mx-auto flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold"><svg class="ico text-gold" viewBox="0 0 384 512" aria-hidden="true" focusable="false"><use href="#i-mobile-screen"/></svg> Instalar la app de Z18</button></div>
   <p class="mt-6 text-xs text-muted">© <span id="yr"></span> Z18 Hamburguesería. Todos los derechos reservados.</p>
+  <p class="mt-1 text-xs"><a href="privacidad.html" class="inline-flex min-h-11 items-center font-semibold text-muted underline decoration-fire underline-offset-4">Política de privacidad</a></p>
 </footer>
 
 <!-- ============ BOTONES FLOTANTES: WhatsApp + carrito ============ -->
@@ -307,14 +388,14 @@
   </div>
   <div id="cartScroll" class="flex-1 overflow-y-auto">
     <div id="cartItems" class="space-y-3 p-4"></div>
-    <!-- Datos del pedido: la cocina los necesita para preparar y entregar (nombre, teléfono y dirección de entrega: solo delivery, sin retiro en el local). Se recuerdan en este dispositivo. La lógica está en app.js («DATOS DE ENTREGA») -->
+    <!-- Datos del pedido: la cocina los necesita para preparar y entregar (teléfono y dirección de entrega, obligatorios; el nombre es opcional: sin nombre figura como «Cliente». Solo delivery, sin retiro en el local). Se recuerdan en este dispositivo. La lógica está en app.js («DATOS DE ENTREGA») -->
     <form id="cartDatos" novalidate hidden aria-labelledby="entTitulo" class="space-y-3 border-t border-cardborder p-4">
       <div>
         <h3 id="entTitulo" class="font-display text-2xl tracking-wide">Tus datos para el pedido</h3>
         <p class="text-xs text-muted">Solo para preparar y entregar tu pedido. Se guardan en este dispositivo para la próxima.</p>
       </div>
       <div>
-        <label for="entNombre" class="mb-1 block text-sm font-semibold text-ink">Tu nombre</label>
+        <label for="entNombre" class="mb-1 block text-sm font-semibold text-ink">Tu nombre <span class="font-normal text-muted">(opcional)</span></label>
         <input id="entNombre" enterkeyhint="next" type="text" class="inp" autocomplete="name" maxlength="60" placeholder="Ej: Ana Pérez" aria-describedby="entNombreErr">
         <p id="entNombreErr" class="err ent-err" role="alert"></p>
       </div>
