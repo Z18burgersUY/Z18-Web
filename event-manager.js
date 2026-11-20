@@ -11,6 +11,13 @@
          const activeEvent = null;          // APAGADO: no se toca nada, la web queda tal cual
          const activeEvent = 'navidad';     // ENCENDIDO: tema + decorado de Navidad
 
+   ► CALENDARIO (eventos por fecha): además del interruptor, la lista CALENDARIO (más abajo, dentro de Z18EventManager) prende un evento SOLO en un rango de días y lo apaga
+     solo después, sin que nadie tenga que subir nada el día que empieza ni el que termina. Cada línea es así:
+         { evento: 'estreno', desde: '2026-11-19', hasta: '2026-11-25' }      // del 19 al 25 de noviembre de 2026, los dos días incluidos
+     · Cuentan los días de Montevideo (UTC−3; Uruguay no cambia la hora en verano): el evento rige desde las 00:00 del día «desde» hasta las 24:00 del día «hasta»,
+       y al día siguiente vuelve solo el evento del interruptor general (por ejemplo Navidad). Para cambiar los días se editan esas dos fechas (AAAA-MM-DD).
+     · El interruptor general manda: con «null» (apagado) tampoco se prende el del calendario. Una línea mal escrita se ignora y la web sigue con el interruptor general.
+     · Se mira al cargar la página: quien la tenga abierta a medianoche ve el cambio al recargarla.
    ► ELECCIÓN DEL CLIENTE: con un evento en curso, «Mi cuenta» muestra un interruptor («Tema de Navidad») para que cada cliente lo prenda o apague.
      Su decisión queda en localStorage (clave z18_evento_off = nombre del evento apagado) y se respeta al recargar; solo vale para ESE evento
      (si mañana el evento es otro, se muestra igual). El interruptor lo maneja app.js a través de window.Z18Events (ver más abajo).
@@ -65,8 +72,28 @@
    ═══════════════════════════════════════════════════════════════════════════════════════════════ */
 const activeEvent = 'navidad';
 
-(function Z18EventManager() {
+(function Z18EventManager(eventoBase) {
   'use strict';
+
+  /* ───────────────────────────── CALENDARIO (eventos por fecha) ─────────────────────────────
+     Cada línea prende un evento solo entre dos fechas de Montevideo (las dos incluidas) y después vuelve el del interruptor general (ver «CALENDARIO» arriba).
+     El nombre tiene que ser el de un evento que exista (una sección de styles.css y/o una entrada de EVENTS más abajo). */
+  const CALENDARIO = [
+    { evento: 'estreno', desde: '2026-11-19', hasta: '2026-11-25' }      // semana del estreno: jueves 19 a miércoles 25 de noviembre de 2026
+  ];
+  const hoyEnMontevideo = () => new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);   // 'AAAA-MM-DD' en Montevideo (UTC−3, sin horario de verano), sea cual sea la zona del celular
+  const FECHA = /^\d{4}-\d{2}-\d{2}$/;
+  const eventoDelDia = base => {                       // el evento que rige HOY: el del calendario si hay uno y, si no, el del interruptor general
+    if (base === null || base === undefined || base === false || base === '') return base;   // interruptor general apagado: manda, no se prende nada
+    try {
+      const hoy = hoyEnMontevideo();
+      for (const f of CALENDARIO) {
+        if (f && typeof f.evento === 'string' && FECHA.test(f.desde) && FECHA.test(f.hasta) && hoy >= f.desde && hoy <= f.hasta) return f.evento;
+      }
+    } catch (e) { /* un calendario roto nunca rompe la web: queda el interruptor general */ }
+    return base;
+  };
+  const activeEvent = eventoDelDia(eventoBase);        // desde acá, «activeEvent» es el evento de HOY (el de afuera es solo el interruptor general)
 
   /* ───────────────────────────── REGISTRO DE EVENTOS (los mods) ─────────────────────────────
      Solo para lo que un archivo de CSS no puede hacer: decorado dinámico y logo propio. Un evento SIN entrada acá funciona igual, solo con su sección de styles.css
@@ -117,6 +144,67 @@ const activeEvent = 'navidad';
         const sello = document.createElement('span');
         sello.className = 'z18-evt-sello';
         sello.textContent = '🎄 Especial Navidad';
+        capa.appendChild(sello);
+        ctx.add(capa, ctx.header, true);                                            // al principio de la cabecera: queda detrás del logo y los textos
+      }
+    },
+
+    /* ── Edición Neón 🌴 (la semana del estreno: ver CALENDARIO) ──
+       Un atardecer de neón de los 80: sol retro con franjas detrás del logo, piso de rejilla que avanza, palmeras y un sello. Todo dibujado con CSS y SVG propios (sin imágenes que subir) y sin logo
+       propio: el logo de siempre se queda. La paleta, los emojis y los paneles (el tema) están en styles.css, sección «EVENTO · EDICIÓN NEÓN»; acá solo el decorado de la cabecera.
+       Es la ambientación del estreno de GTA 6 (atardecer de neón de Miami en los 80), con dibujo propio: NO usa el logo, los personajes ni las imágenes del juego (son marca y obra de sus dueños);
+       el nombre aparece solo como texto en el sello, de referencia al estreno. */
+    estreno: {
+      nombre: 'Neón',
+      emoji: '🌴',                                    // lo muestra el interruptor de «Mi cuenta»: «🌴 Tema de Neón»
+      sello: '🌴 Estreno GTA 6',                       // el texto de la etiqueta inclinada de la cabecera (cambialo acá): solo texto, como referencia al estreno
+      css: `
+        /* Capa decorativa dentro de la cabecera: absoluta, sin clics y detrás del contenido → no mueve nada (cero CLS) */
+        .z18-evt-capa { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+                        --suelo: 6.2rem; --logo: 11rem; --palma: clamp(8rem, 26vw, 13rem); }
+        @media (min-width: 640px) { .z18-evt-capa { --logo: 13rem; } }                       /* el alto del logo de la cabecera (11 rem y, desde 640 px, 13 rem): el sol se centra detrás de él */
+        /* Cielo: resplandor rosa sobre el horizonte */
+        .z18-evt-cielo { position: absolute; left: 0; right: 0; top: 0; bottom: var(--suelo);
+                         background: radial-gradient(ellipse 55% 75% at 50% 100%, rgb(var(--est-rosa, 255 45 149) / .4), transparent 72%); }
+        /* Sol retro DETRÁS del logo (1,5 veces más grande: alrededor del logo queda el aro del sol): amarillo, naranja y rosa, vaciado en franjas hacia abajo y desvaneciéndose antes del título */
+        .z18-evt-sol { position: absolute; left: 50%; top: calc(2.5rem + var(--logo) / 2); width: calc(var(--logo) * 1.5); height: calc(var(--logo) * 1.5);
+                       margin: calc(var(--logo) * -.75) 0 0 calc(var(--logo) * -.75); border-radius: 50%; opacity: .95;
+                       background: linear-gradient(180deg, #ffe27a 0%, #ff9a3c 28%, #ff3d8f 60%, rgb(165 47 212 / 0) 100%);
+                       -webkit-mask-image: linear-gradient(180deg, #000 0 58%, transparent 58% 62%, #000 62% 68%, transparent 68% 74%, #000 74% 80%, transparent 80% 87%, #000 87%);
+                               mask-image: linear-gradient(180deg, #000 0 58%, transparent 58% 62%, #000 62% 68%, transparent 68% 74%, #000 74% 80%, transparent 80% 87%, #000 87%); }
+        /* Piso: línea de horizonte de neón y una rejilla en perspectiva que avanza hacia quien mira */
+        .z18-evt-suelo { position: absolute; left: 0; right: 0; bottom: 0; height: var(--suelo); overflow: hidden; perspective: 8rem; perspective-origin: 50% 0;
+                         background: linear-gradient(180deg, rgb(var(--est-violeta, 124 58 237) / .5), rgb(var(--est-noche, 22 6 44) / .2));
+                         border-top: 2px solid rgb(var(--est-rosa, 255 45 149)); box-shadow: 0 -2px 16px rgb(var(--est-rosa, 255 45 149) / .7); }
+        .z18-evt-rejilla { position: absolute; left: -70%; right: -70%; top: 0; height: 320%; transform-origin: 50% 0; transform: rotateX(64deg);
+                           background-image: linear-gradient(rgb(var(--est-rosa, 255 45 149) / .9) 0 2px, transparent 2px), linear-gradient(90deg, rgb(var(--est-rosa, 255 45 149) / .9) 0 2px, transparent 2px);
+                           background-size: 2.6rem 2.6rem; background-position: 50% 0;
+                           -webkit-mask-image: linear-gradient(180deg, transparent, #000 35%); mask-image: linear-gradient(180deg, transparent, #000 35%);
+                           animation: z18-evt-avance 2.2s linear infinite; }
+        @keyframes z18-evt-avance { from { transform: rotateX(64deg) translateY(0); } to { transform: rotateX(64deg) translateY(2.6rem); } }
+        /* Palmeras: silueta a cada lado (en celular, en los bordes; en pantalla ancha, a los costados de la columna del contenido) */
+        .z18-evt-palma { position: absolute; bottom: 0; left: clamp(-1rem, calc(50% - 27rem), 40vw); height: var(--palma); width: auto; aspect-ratio: 120 / 220; fill: var(--est-palma, #0b0420); opacity: .95; }
+        .z18-evt-palma-der { left: auto; right: clamp(-1rem, calc(50% - 27rem), 40vw); transform: scaleX(-1); }
+        .z18-evt-sello { position: absolute; top: 1.7rem; left: .6rem; padding: .1rem .55rem; border-radius: 9999px;
+                         font: 400 .82rem/1.25 'Bebas Neue', sans-serif; letter-spacing: .08em; color: #fff;
+                         background: linear-gradient(135deg, rgb(var(--est-rosa-boton, 214 0 116)), rgb(var(--est-violeta, 124 58 237)));
+                         box-shadow: 0 2px 12px rgb(var(--est-rosa, 255 45 149) / .55), 0 0 0 1px rgb(var(--est-cian, 56 224 255) / .9); transform: rotate(-4deg); }
+        @media (prefers-reduced-motion: reduce) { .z18-evt-rejilla { animation: none; } }
+      `,
+      js(ctx) {
+        if (!ctx.header) return;
+        const FRONDA = 'M0 0C18-20 40-16 54 10C40-2 20-4 0 0Z';                       // una hoja de palmera (arco que cae); las 8 salen de girarla y espejarla
+        const palmera = lado => '<svg class="z18-evt-palma' + (lado ? ' z18-evt-palma-der' : '') + '" viewBox="0 0 120 220" focusable="false" aria-hidden="true">'
+          + '<path d="M52 220C53 172 52 122 57 66L64 66C63 124 64 174 67 220Z"/>'
+          + [-72, -38, -4, 34].map(a => '<path d="' + FRONDA + '" transform="translate(60 64) rotate(' + a + ')"/><path d="' + FRONDA + '" transform="translate(60 64) scale(-1 1) rotate(' + a + ')"/>').join('')
+          + '</svg>';
+        const capa = document.createElement('div');
+        capa.className = 'z18-evt-capa';
+        capa.setAttribute('aria-hidden', 'true');
+        capa.innerHTML = '<div class="z18-evt-cielo"></div><i class="z18-evt-sol"></i><div class="z18-evt-suelo"><i class="z18-evt-rejilla"></i></div>' + palmera(false) + palmera(true);
+        const sello = document.createElement('span');
+        sello.className = 'z18-evt-sello';
+        sello.textContent = EVENTS.estreno.sello;
         capa.appendChild(sello);
         ctx.add(capa, ctx.header, true);                                            // al principio de la cabecera: queda detrás del logo y los textos
       }
@@ -390,4 +478,4 @@ const activeEvent = 'navidad';
   };
 
   if (!apagadoPorCliente()) encender();               // salvo que el cliente lo haya apagado en una visita anterior
-})();
+})(activeEvent);

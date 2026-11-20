@@ -1,85 +1,43 @@
-# Z18 · Carta para Google, política de privacidad y nombre opcional
+# Z18 · Edición Neón: la web en temática GTA 6 toda la semana del estreno
 
-Se apoya en la entrega 19, que ya está subida (revisé tu repositorio: último cambio 14/11, 21:23, y `app.js` es idéntico al que probé).
+Son **2 archivos**, completos. **Reemplazan** a los que ya están en la raíz del repo de la web: **`event-manager.js`** y **`styles.css`**. Nada más: no cambian `index.html`, `app.js`, `tailwind.css`, `sw.js`, `vercel.json`, las fotos, el panel de cocina, Firebase ni las reglas de Firestore, y no hay logos ni imágenes nuevas. `LEEME.md` no se sube.
 
-Son **4 archivos**, completos. **Reemplazan** a los que ya están en la raíz del repo de la web: **`index.html`**, **`app.js`** y **`sitemap.xml`**. Y **`privacidad.html`** es **nuevo**: se agrega al lado de los demás. No cambian `tailwind.css`, `styles.css`, `sw.js`, `vercel.json`, las fotos, el panel de cocina, Firebase ni las reglas de Firestore. `LEEME.md` no se sube.
+## Qué hace
 
-## Qué cambia
+- **Se prende solo y se apaga solo, por fecha.** Rige **desde las 00:00 del jueves 19 de noviembre hasta las 24:00 del miércoles 25** (7 días, hora de Montevideo). El jueves 26 vuelve sola la Navidad. No hay que subir nada ningún día: si lo subís hoy o mañana, se ve igual desde que Vercel publique, porque manda la fecha.
+- **Cómo lo interpreté:** «toda la semana» = una semana completa desde el estreno (jueves a miércoles). Si querías que termine el domingo 22, cambiá una fecha (más abajo).
+- **Qué se ve:** una noche de neón de Miami en los 80, en modo oscuro y en modo claro: violeta noche con rosa y naranja, **un sol retro con franjas detrás del logo**, palmeras a los costados, un **piso de rejilla** que avanza, un tubo de neón en el borde de arriba, chispas rosa, cian y naranja, emojis en los títulos de la carta (🍔 🏎️ 🌴 🍕 🕶️ 🍟 🍹 🌅), el carrito y los avisos con borde de neón, y un sello inclinado: **«🌴 Estreno GTA 6»**.
+- **Cada cliente puede apagarlo** desde «Mi cuenta» («🌴 Tema de Neón»). Apagarlo vale solo para este tema: no apaga la Navidad.
+- A quien tiene activado «reducir movimiento» en el celular no se le mueve nada (ni el piso ni el tubo de neón).
+- Nada cambia de lugar ni de tamaño: es solo color y decorado, y el decorado no se puede tocar (no tapa botones). Los precios, el carrito, los pedidos y la cocina funcionan exactamente igual.
 
-### 1. La carta para Google (lo del «5»)
+## Sobre «GTA 6» (te lo digo sin vueltas)
 
-`index.html` ahora le cuenta a Google, en un bloque de datos estructurados que los clientes no ven, que Z18 es un restaurante, **dónde está su carta** (`https://z18-web.vercel.app/#burgers`) y **qué hay en ella**: 8 partes y **31 platos con su precio en pesos uruguayos**.
+El estilo es el de su ambientación, pero **todo está dibujado de cero** con CSS y SVG propios. **No usé el logo, los personajes ni las imágenes del juego**: son de sus dueños (Rockstar y Take-Two) y en una web comercial podrían traerte un reclamo. El nombre aparece **una sola vez, como texto del sello**, como referencia al estreno. No digas que es oficial ni que hay relación con ellos, y si preferís no nombrarlos, cambiá el texto (más abajo).
 
-Se mantiene sola: al cargar, `app.js` vuelve a armar esa carta a partir del menú de siempre. Si algún día cambiás un precio o agregás un plato en `app.js`, los datos para Google quedan al día sin tocar nada más. Si por algún motivo eso fallara, la web sigue funcionando igual y queda la copia fija que está en `index.html`.
+## Cambiar días o textos (todo está en `event-manager.js`)
 
-**Lo que tenés que saber, sin humo:** de todo esto, lo único que Google documenta para restaurantes es el **enlace a la carta**. Los platos y precios están escritos en el formato correcto (schema.org), pero hoy Google **no los muestra** como resultado enriquecido en el buscador. O sea: sirve para que Google entienda bien el negocio y encuentre la carta, **no** para que aparezcan tus hamburguesas con foto y precio en los resultados. No te prometo posicionamiento.
-
-### 2. El enlace «Pedir» en tu ficha de Google (esto lo hacés vos, es 3 minutos)
-
-Hace falta ser administrador de la ficha de Z18. Los nombres de los botones pueden variar un poco en español; seguí lo que dice Google en su ayuda ([menú](https://support.google.com/business/answer/9455840) · [enlaces de pedido](https://support.google.com/business/answer/6218037)).
-
-**Enlace de la carta**
-1. Entrá a [business.google.com](https://business.google.com) y abrí la ficha de Z18.
-2. **Editar perfil → Información de la empresa → Contacto → Enlace del menú** («Menu link»). Si lo hacés desde la búsqueda de Google: Editar perfil → Contacto → Enlace del menú.
-3. Pegá `https://z18-web.vercel.app/#burgers` y tocá **Guardar**.
-
-**Botón de pedir** («Food ordering»)
-1. En la ficha, desde Google Búsqueda tocá **Food ordering** (pedidos de comida) o **Pickup and delivery** (retiro y entrega); desde Google Maps, **Editar perfil** y después el mismo tipo de pedido.
-2. **Agregar enlace** → pegá `https://z18-web.vercel.app/` → **Guardar**.
-
-Si más adelante agregás otros enlaces (por ejemplo PedidosYa), con **Establecer enlace preferido** elegís cuál aparece primero.
-Google decide si y cómo muestra el botón, y puede tardar unos días en aparecer.
-
-### 3. La política de privacidad (lo del «4»)
-
-- Página nueva: **`https://z18-web.vercel.app/privacidad.html`**. En el pie de la web hay un enlace «Política de privacidad», y la página tiene un «Volver a la carta» arriba y otro al final. También está en el `sitemap.xml`.
-- Está escrita en español rioplatense y sin vueltas: un «En resumen» y nueve partes (quién es el responsable, qué datos se piden y para qué, con quién se comparten, dónde se guardan, cuánto tiempo, tus derechos según la Ley 18.331, seguridad, cambios y contacto). Se ve bien en celular y escritorio, en modo claro y oscuro, y abre sin conexión si ya la visitaron.
-- La armé mirando lo que **la web hace de verdad** (qué guarda en la cocina, en la cuenta, en el celular, con qué servicios se conecta) y las pruebas comprueban que lo que dice coincide con eso: por ejemplo, que no usa cookies ni analítica, y que los datos que se guardan son los que la política nombra.
-
-**Importante: no soy abogado.** Es un texto razonable para una hamburguesería chica, pero te recomiendo que lo lea un profesional (contador o abogado) antes de darlo por cerrado. Lo que escribí en nombre del local y **tenés que confirmar vos**:
-- **«No vendemos tus datos ni los usamos para publicidad de terceros»** y **«si quisiéramos usarlos para otra cosa, te lo pedimos antes»**. Si algún día mandás promociones por WhatsApp con los teléfonos de los pedidos, la política dice que antes se lo pedís al cliente: tenés que cumplirlo (o cambiar esa frase).
-- **Borrar datos a pedido.** Hoy es manual: lo hacés vos desde la consola de Firebase (el pedido y, si tiene, la cuenta). La política dice que respondés **en 5 días hábiles**, que es el plazo que fija la Ley 18.331 (artículos 14 y 15): tenés que poder cumplirlo cuando alguien lo pida, así que no conviene alargarlo.
-- **Quién es el responsable.** Figura «Z18 Hamburguesería Artesanal & Grill, Paso de la Arena» con el correo (`z18.burgers.uy@gmail.com`) y el WhatsApp (092 061 753) que ya usa la web. Si el negocio tiene razón social, RUT o dirección completa, conviene agregarlos.
-- **Plazos de conservación.** Dice «mientras hagan falta y para el registro de ventas», sin plazos en números. Si tu contador te indica algún plazo, se agrega.
-- **Registro ante la URCDP.** Según cómo esté constituido el negocio, la Ley 18.331 puede exigir inscribir la base de datos en la Unidad Reguladora y de Control de Datos Personales. Eso lo tenés que consultar con un profesional.
-
-### 4. Nombre opcional al pedir
-
-El formulario del carrito ya pedía el nombre (a todos, tengan cuenta o no), y era obligatorio. Ahora el **nombre es opcional**: teléfono y dirección siguen siendo obligatorios (sin eso no se puede entregar), pero quien no quiera poner su nombre puede dejarlo vacío.
-
-- **Si lo escribe**, se **guarda en su celular** (igual que el teléfono y la dirección) y le aparece ya escrito en el próximo pedido. Si tiene cuenta, el nombre de su cuenta aparece ya escrito, como antes.
-- **Si no lo escribe**, en la cocina el pedido figura a nombre de **«Cliente»**, y el mensaje de WhatsApp sale sin «Soy …» (si puso teléfono, dice «Mi teléfono es …»).
-- Si escribe **una sola letra**, la web le avisa («Escribí al menos 2 letras, o dejá el nombre vacío»).
-- La cocina y las reglas de Firebase **no se tocaron**: siguen exigiendo un nombre de al menos 2 letras. Por eso el «Cliente» se pone justo al avisar a la cocina.
+- **Los días:** buscá `CALENDARIO` (línea 82):
+  `{ evento: 'estreno', desde: '2026-11-19', hasta: '2026-11-25' }`
+  Se editan las dos fechas (formato `AAAA-MM-DD`, las dos incluidas). Por ejemplo, hasta el domingo: `hasta: '2026-11-22'`. Para un solo día, la misma fecha en las dos. Una fecha mal escrita se ignora y la web sigue como siempre (no se rompe nada).
+- **El texto del sello:** línea 160, `sello: '🌴 Estreno GTA 6',`. Por ejemplo `'🌴 Edición Neón'` si preferís sin el nombre.
+- **Apagarlo del todo en cualquier momento:** poné en `hasta` una fecha que ya pasó, o apagá todos los eventos con `const activeEvent = null;` (línea 73; apaga también la Navidad).
 
 ## Subir y probar
 
-Subí los 4 archivos (3 reemplazan, 1 es nuevo), esperá a que Vercel publique (uno o dos minutos) y recargá la web. Probá en el celular:
-1. **Bajá hasta el final** y tocá **«Política de privacidad»**: se abre la página; **«Volver a la carta»** te devuelve a la web.
-2. **Sin iniciar sesión**, agregá un producto, abrí el carrito y completá **solo teléfono y dirección** (sin nombre): tiene que dejarte enviar y, en el panel de cocina, el pedido tiene que figurar como **«Cliente»**. (Es un pedido de prueba: después lo cancelás.)
-3. Hacé otro pedido de prueba escribiendo un nombre (por ejemplo «Ana»): llega a la cocina con ese nombre, y al volver a abrir el carrito «Ana», el teléfono y la dirección ya están escritos.
-4. Opcional, para ver lo de Google: pegá `https://z18-web.vercel.app/` en [validator.schema.org](https://validator.schema.org/): debería mostrar un **Restaurant** con su **Menu** (8 partes y 31 platos) y sin errores. Si marca algo, mandame la captura (yo no lo pude probar desde acá).
+Subí los 2 archivos, esperá a que Vercel publique (uno o dos minutos) y recargá la web (en el celular, cerrá la pestaña y abrila de nuevo). Mirá:
+1. La **cabecera**: el sol con franjas detrás del logo, las palmeras, el piso de rejilla abajo y el sello arriba a la izquierda. Probalo también en modo claro.
+2. Un **título de la carta** con su emoji, el **carrito** y los **avisos** con el borde de neón.
+3. «Mi cuenta» → **«Tema de Neón»**: apagalo y la web vuelve a la de siempre; prendelo y vuelve el neón.
+
+Si alguien tiene la web abierta justo a medianoche, ve el cambio la próxima vez que la recargue o la abra. Los clientes que ya la visitaron ven el tema desde su próxima visita (la web pide siempre primero lo último a internet).
 
 ## Cómo se probó
 
 Navegador real, celular y escritorio, sobre estos mismos archivos:
-- Lo que ya existía sigue igual: **138** verificaciones del carrito y el pedido (las del nombre se adaptaron), **150** de la Navidad, **534** del panel de cocina y **16** punta a punta. Las reglas de Firestore no cambian (**779** casos).
-- Comparación pantalla por pantalla (**38** pantallas, celular y escritorio, claro y oscuro): **0 diferencias** contra lo que tenés publicado hoy en GitHub (salvo lo nuevo a propósito: el enlace del pie y el «(opcional)» del nombre) y **0 diferencias** contra la web de antes de la web rápida (con lo nuevo escondido). Incluye la pantalla del carrito con errores: el aviso del nombre se ve igual que antes cuando escriben una sola letra.
-- Lo nuevo y la web rápida: **541** verificaciones. Las de esta entrega comprueban, entre otras cosas, que los datos para Google tienen los **31 platos** del menú con sus precios (y que cambian solos si cambia un precio), que la copia fija de `index.html` coincide con el menú, que la política se ve bien a 320, 390 y 1280 px en los dos temas (sin desbordes y con el contraste de lectura recomendado), que todo lo que dice coincide con lo que la web guarda de verdad, que funciona sin conexión, y todo el recorrido del nombre opcional (en blanco, una letra, guardado, con y sin teléfono, y que a la cocina llega el pedido igual).
-- **89** roturas a propósito (57 de entregas anteriores + 32 nuevas: por ejemplo, que se caiga una parte de la carta, que los precios salgan en dólares, que el enlace del pie apunte a otra página, que el resumen deje de decir que no se venden los datos, que el nombre vuelva a ser obligatorio): las pruebas detectaron las 89.
-- Simulación de la subida (tu repositorio de hoy + estos 4 archivos): todo en verde (**525** verificaciones de lo nuevo, **138** del pedido y **150** de la Navidad), y los 4 archivos quedan idénticos a los que probé.
+- **Las pruebas nuevas del tema (232 verificaciones, todas bien):** que arranque a las **00:00 del 19** y no un segundo antes, que dure **hasta las 24:00 del 25** y el 26 vuelva la Navidad, y que dé lo mismo la zona horaria del celular (probado con Tokio, Los Ángeles y UTC); que con el interruptor general apagado, una fecha mal escrita, un evento inexistente o un calendario roto **la web no se rompa**; el decorado, la paleta y el sello; que no cambie el logo; el interruptor de «Mi cuenta» (y que apagar la Navidad no apague el Neón ni al revés); que apagado quede **idéntica a la web sin evento**; que nada se mueva a 320, 360, 390, 768 y 1280 px (sin desborde ni saltos de diseño); «reducir movimiento»; y que el decorado no tape ningún clic.
+- **Contraste de lectura (WCAG AA):** se midió la paleta, el enlace «Burgers» y **todos los textos de la web** en oscuro y claro, con los paneles y «Mi cuenta». El título y el subtítulo de la cabecera, que quedan sobre el sol y el piso, se midieron **sobre los píxeles reales** (peor caso 6,9:1 el subtítulo y 9,5:1 el título; el mínimo exigido es 4,5:1 y 3:1).
+- **Lo que ya existía sigue igual:** en la última corrida completa dieron bien las **138** verificaciones del carrito y el pedido, las **534** del panel de cocina, las **16** punta a punta, las **150** de la Navidad y las **779** de las reglas de Firestore. Y la comparación pantalla por pantalla de la web de siempre contra lo que está publicado dio **0 diferencias**: el tema no toca nada fuera de su semana.
+- **Se comprobó que `tailwind.css` queda idéntico al publicado** (por eso no hay que subirlo) y que en los dos archivos **solo se agrega**: de lo que ya estaba en `event-manager.js` únicamente cambian la línea de apertura y la de cierre de la función (para que reciba el interruptor general), y en `styles.css` no se toca ni una línea de lo anterior.
 
-**Lo que no pude hacer:** verlo en un celular real, en tu Vercel ni en Google (no puedo ver cómo termina mostrando Google la carta ni el botón de la ficha), ni pasarlo por el validador de schema.org desde acá.
-
-## Si querés otra cosa
-
-- **Un aviso corto junto a los formularios** («Usamos tu teléfono y dirección solo para entregar tu pedido. Política de privacidad»): hoy el enlace está en el pie. Para que la política cumpla mejor su función conviene que también esté donde se piden los datos (carrito y registro). Es un cambio chico; decime y lo hago.
-- Sigue pendiente la línea del carrito «Envío — A coordinar por WhatsApp» (y «envío a coordinar» en el mensaje): como el delivery es gratis, se puede cambiar por «Envío gratis».
-- Si cambiás precios en `app.js`, los datos para Google (la parte que ejecuta Google) se actualizan solos; la copia fija de `index.html` solo la leen buscadores que no ejecutan JavaScript. Si querés mantenerla al día, pedímelo y la regenero (la herramienta que la arma no se sube al repo).
-
-## Fuentes
-
-- Google, [menú del perfil de empresa](https://support.google.com/business/answer/9455840) y [enlaces de pedido y reserva](https://support.google.com/business/answer/6218037).
-- schema.org, [`hasMenu`](https://schema.org/hasMenu) (el formato de la carta; reemplaza a la propiedad `menu`, que se deja también porque es la que Google documenta).
-- Ley 18.331 de Protección de Datos Personales: [artículo 14](https://www.impo.com.uy/bases/leyes/18331-2008/14) (acceso, 5 días hábiles) y [artículo 15](https://www.impo.com.uy/bases/leyes/18331-2008/15) (rectificación, actualización, inclusión o supresión, 5 días hábiles).
-- [Unidad Reguladora y de Control de Datos Personales (URCDP)](https://www.gub.uy/unidad-reguladora-control-datos-personales).
+**Lo que no pude hacer:** verlo en un celular real ni en tu Vercel. Lo vi en el navegador de pruebas, en celular y en escritorio, en oscuro y en claro.

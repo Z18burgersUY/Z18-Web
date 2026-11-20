@@ -473,6 +473,152 @@ html[data-evento="navidad"] .safe-avisos-top::after { content: "🔔"; content: 
   html[data-evento="navidad"] :is(#cart, #avisos):not([inert]) :is(.safe-cart-top, .safe-avisos-top)::after { animation: nav-columpio 3.8s ease-in-out infinite alternate; }
 }
 
+/* ═════════════════ EVENTO · EDICIÓN NEÓN 🌴 (la semana del estreno) ═════════════════
+   Se enciende SOLO por fecha: la lista CALENDARIO de event-manager.js lo pone del 19 al 25 de noviembre de 2026 (día de Montevideo) y, pasada esa fecha, vuelve el
+   evento del interruptor general. El gestor pone data-evento="estreno" en <html> antes del primer dibujo y todo lo de abajo se aplica. Es solo CSS: no toca la lógica (app.js).
+   Mismo esquema que Navidad: 1) variables (paleta --est-* y su mapeo a los tokens del sitio, oscuro y claro) · 2) detalles · 3) emojis de los títulos · 4) cabecera · 5) paneles.
+   El sol, el piso de rejilla, las palmeras y el sello de la cabecera no están acá: los arma event-manager.js (entrada «estreno» del registro EVENTS).
+   Para cambiarle la paleta alcanza con las variables --est-*; en modo claro el naranja pasa a violeta profundo (el «dorado» de los textos) para que se lea sobre blanco. */
+
+/* 1 · Variables — modo OSCURO (por defecto) */
+html[data-evento="estreno"] {
+  --evento-nombre: "Neón"; --evento-emoji: "🌴";
+  /* Paleta del evento (canales RGB) */
+  --est-rosa: 255 45 149;        /* rosa neón: tubos de luz, brillos y bordes (sin texto blanco encima: no llega al contraste) */
+  --est-rosa-boton: 214 0 116;   /* rosa fuerte: botones, etiquetas y sello (con texto blanco encima, contraste 5:1) */
+  --est-rosa-hondo: 160 0 92;    /* …su extremo oscuro (degradé de los botones y etiquetas) */
+  --est-rosa-claro: 255 128 196; /* rosa claro: textos e íconos sobre fondo oscuro */
+  --est-naranja: 255 150 60;     /* naranja atardecer: subtítulos, enlaces, foco */
+  --est-cian: 56 224 255;        /* cian neón: el segundo tubo de luz */
+  --est-violeta: 124 58 237;     /* violeta: el piso y el final del degradé del sello */
+  --est-noche: 22 6 44;          /* tinta oscura para el texto sobre el rosa claro */
+  --est-palma: #0b0420;          /* silueta de las palmeras */
+
+  /* Superficies: violeta noche */
+  --z-bg: #12062a; --z-bg2: #1b0a3d; --z-hero1: #35105a;
+  --z-card: #1e0d42; --z-input: #150833; --z-chip: #2c1262;
+  --z-border: #40207f; --z-hairline: #6a3fb8;
+  --z-muted: #f0e6ff; --z-muted2: #c4b0ec;
+
+  /* Tokens del sitio → paleta del evento */
+  --z-fire: var(--est-rosa-claro);
+  --z-fire-deep: var(--est-rosa-hondo);
+  --z-gold: var(--est-naranja);          /* subtítulos, enlaces, foco, puntos y misiones quedan en naranja atardecer */
+  --z-gold-hi: 255 226 122;
+  --z-amber: 255 94 140;
+  --z-star: 255 214 90;                  /* estrella de favoritos */
+  --z-on-fire: 255 255 255;
+  --z-btn-a: var(--est-rosa-boton); --z-btn-b: var(--est-rosa-hondo);   /* el botón principal va en rosa fuerte (texto blanco, contraste 5:1 o más) */
+  --z-glow-a: 255 61 143; --z-glow-b: 255 150 60; --z-glow-c: 255 90 170;
+
+  /* Campanita 🔔 y panel de avisos */
+  --campana-badge: rgb(var(--est-rosa-boton));
+  --campana-badge-tx: #ffffff;
+  --campana-acento: rgb(var(--est-rosa-claro));
+  --campana-nuevo: rgb(var(--est-naranja));
+  --campana-ico: rgb(var(--est-naranja));
+}
+
+/* 1 · Variables — modo CLARO */
+html[data-evento="estreno"][data-theme="light"] {
+  --est-cian: 0 150 180;
+  --est-palma: #4a1a6b;
+
+  --z-bg: #fff4fa; --z-bg2: #ffffff; --z-hero1: #ffe1f1;
+  --z-card: #ffffff; --z-input: #fdeaf5; --z-chip: #fbe0f0;
+  --z-border: #f3c9e2; --z-hairline: #e3a6cc;
+  --z-ink: #2b0a26; --z-muted: #5b2a50; --z-muted2: #7a4a6e;
+
+  --z-fire: 190 18 100;                  /* rosa profundo: se lee como texto e ícono sobre fondo claro */
+  --z-fire-deep: 150 10 80;
+  --z-gold: 91 33 182;                   /* lo que era dorado (subtítulos, enlaces, foco, puntos, misiones) pasa a violeta profundo */
+  --z-gold-hi: 167 139 250;
+  --z-gold-ink: 76 29 149; --z-gold-line: 109 40 217; --z-gold-deep: 76 29 149;
+  --z-amber: 190 18 100;
+  --z-star: 202 138 4; --z-star-ink: 146 64 14; --z-star-line: 202 138 4;
+  --z-btn-a: 214 0 116; --z-btn-b: 160 0 92;   /* el botón principal sigue en rosa fuerte también sobre claro */
+  --z-glow-a: 255 61 143; --z-glow-b: 255 61 143; --z-glow-c: 255 61 143;
+
+  --campana-badge: rgb(var(--est-rosa-boton));
+  --campana-acento: rgb(var(--z-fire));
+  --campana-nuevo: rgb(var(--z-star));
+  --campana-ico: rgb(var(--z-gold));
+}
+
+/* 2 · Detalles */
+html[data-evento="estreno"] *::selection { background: rgb(var(--est-rosa-boton)); color: #fff; }
+/* Cabecera: el logo y el título brillan como un cartel de neón */
+html[data-evento="estreno"] .glow-logo { filter: drop-shadow(0 0 22px rgb(var(--est-rosa) / .6)) drop-shadow(0 0 10px rgb(var(--est-cian) / .35)); }
+html[data-evento="estreno"] .glow-text { text-shadow: 0 0 10px rgb(var(--est-rosa) / .75), 0 0 26px rgb(var(--est-cian) / .3); }
+html[data-evento="estreno"][data-theme="light"] .glow-text { text-shadow: 0 0 14px rgb(var(--est-rosa) / .25); }
+html[data-evento="estreno"] .photo { background: linear-gradient(135deg, #35105a, #12062a); }
+/* Etiqueta de promoción: rosa fuerte con aro cian (resalta sobre las fotos cálidas de la comida) */
+html[data-evento="estreno"] .tag { background: linear-gradient(135deg, rgb(var(--est-rosa-boton)), rgb(var(--est-rosa-hondo))); color: #fff;
+  box-shadow: 0 0 0 1px rgb(var(--est-cian) / .85), 0 0 14px rgb(var(--est-rosa) / .55), 0 4px 14px rgba(0, 0, 0, .55); }
+/* Botón principal: rosa con aro cian; al pasar el mouse brilla más */
+html[data-evento="estreno"] .btn-fire { box-shadow: 0 4px 18px rgb(var(--est-rosa) / .5), 0 0 0 1px rgb(var(--est-cian) / .6); }
+html[data-evento="estreno"] .btn-fire:hover { box-shadow: 0 6px 26px rgb(var(--est-rosa) / .75), 0 0 0 2px rgb(var(--est-cian) / .8); }
+/* Enlace destacado de la barra de secciones («Burgers»): fondo rosa, así que la letra va blanca también cuando es el activo o tiene el mouse encima */
+html[data-evento="estreno"] .nl.nl-hot { color: #fff; }
+/* Tarjetas al pasar el mouse: halo rosa y cian */
+html[data-evento="estreno"] .menu-card:hover { box-shadow: 0 10px 28px -8px rgb(var(--est-rosa) / .5), 0 0 18px -4px rgb(var(--est-cian) / .4); }
+/* Controles con relleno rosa y texto/íconos blancos: sobre el rosa claro (modo oscuro) llevan tinta oscura para leerse */
+html[data-evento="estreno"]:not([data-theme="light"]) #avatarEdit { color: rgb(var(--est-noche)); }
+html[data-evento="estreno"]:not([data-theme="light"]) #accBtn.\!text-white { color: rgb(var(--est-noche)) !important; }
+/* Contador del carrito: naranja con letra negra (oscuro); en claro el «dorado» es violeta profundo, así que va con letra blanca */
+html[data-evento="estreno"][data-theme="light"] #badge { color: #fff; }
+/* Puntos Z: la barra del medidor y las de recompensas van del rosa al naranja, como un atardecer */
+html[data-evento="estreno"] :is(.z-meter-fill, .bar-fill) { background-image: linear-gradient(90deg, rgb(var(--est-rosa)), rgb(var(--est-naranja))); }
+html[data-evento="estreno"] .z-meter-fill { box-shadow: 0 0 10px rgb(var(--est-rosa) / .5); }
+html[data-evento="estreno"]:not([data-theme="light"]) .price-tag { text-shadow: 0 0 14px rgb(var(--est-rosa) / .45); }
+/* Campanita: cuando hay avisos nuevos, un brillo rosa alrededor */
+html[data-evento="estreno"] .campana.tiene-avisos { box-shadow: 0 0 12px rgb(var(--est-rosa) / .55); }
+
+/* 3 · Emojis en los títulos (reemplazan al ícono de siempre, que se esconde mientras dura el evento) */
+html[data-evento="estreno"] :is(section[data-t] h2, #cartTitle, #avisosTitle, #accountTitle, #loginTitle, #registerTitle) > svg.ico { display: none; }
+html[data-evento="estreno"] :is(section[data-t] h2, #cartTitle, #avisosTitle, #accountTitle, #loginTitle, #registerTitle)::before {
+  display: inline-block; margin-right: .4em; font-size: .8em; line-height: 1; vertical-align: .04em; text-shadow: none; }
+html[data-evento="estreno"]:not([data-theme="light"]) :is(section[data-t] h2, #cartTitle, #avisosTitle, #accountTitle, #loginTitle, #registerTitle) { text-shadow: 0 0 20px rgb(var(--est-rosa) / .45); }
+html[data-evento="estreno"] #burgers h2::before   { content: "🍔"; content: "🍔" / ""; }
+html[data-evento="estreno"] #combos h2::before    { content: "🏎️"; content: "🏎️" / ""; }
+html[data-evento="estreno"] #milanesas h2::before { content: "🌴"; content: "🌴" / ""; }
+html[data-evento="estreno"] #pizzetas h2::before  { content: "🍕"; content: "🍕" / ""; }
+html[data-evento="estreno"] #reclutas h2::before  { content: "🕶️"; content: "🕶️" / ""; }
+html[data-evento="estreno"] #minutas h2::before   { content: "🍟"; content: "🍟" / ""; }
+html[data-evento="estreno"] #bebidas h2::before   { content: "🍹"; content: "🍹" / ""; }
+html[data-evento="estreno"] #info h2::before      { content: "🌅"; content: "🌅" / ""; }
+html[data-evento="estreno"] #cartTitle::before     { content: "🛍️"; content: "🛍️" / ""; }
+html[data-evento="estreno"] #avisosTitle::before   { content: "🔔"; content: "🔔" / ""; }
+html[data-evento="estreno"] #accountTitle::before  { content: "😎"; content: "😎" / ""; }
+html[data-evento="estreno"] #loginTitle::before    { content: "😎"; content: "😎" / ""; }
+html[data-evento="estreno"] #registerTitle::before { content: "🌴"; content: "🌴" / ""; }
+/* «Mi cuenta»: títulos de las secciones (el del historial no tiene id: se lo encuentra por el bloque que le sigue) */
+html[data-evento="estreno"] :is(#misionesZ, #zRewardsBox) > h3::before { margin-right: .35em; font-size: .85em; }
+html[data-evento="estreno"] #misionesZ > h3::before   { content: "🎯"; content: "🎯" / ""; }
+html[data-evento="estreno"] #zRewardsBox > h3::before { content: "💎"; content: "💎" / ""; }
+html[data-evento="estreno"] h3:has(+ #orderHistory)::before { content: "🌆"; content: "🌆" / ""; margin-right: .35em; font-size: .85em; }   /* :has() va en regla aparte: si un navegador viejo no la entiende, solo se pierde este emoji */
+
+/* 4 · Cabecera: tubo de neón en el borde de arriba (cian → rosa → naranja) y las brasas de siempre pintadas de chispas de neón (el sol, el piso y las palmeras los arma event-manager.js) */
+html[data-evento="estreno"] header { border-bottom-color: rgb(var(--est-rosa) / .7); }
+html[data-evento="estreno"] header::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; z-index: 1; height: 3px; pointer-events: none;
+  background: linear-gradient(90deg, rgb(var(--est-cian)), rgb(var(--est-rosa)), rgb(var(--est-naranja)), rgb(var(--est-rosa)), rgb(var(--est-cian)));
+  box-shadow: 0 0 12px 1px rgb(var(--est-rosa) / .8); }
+@keyframes est-parpadeo { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-evento="estreno"] header::before { animation: est-parpadeo 2.8s ease-in-out infinite; }
+}
+html[data-evento="estreno"] .ember { background: rgb(var(--est-rosa)); box-shadow: 0 0 8px 2px rgb(var(--est-rosa) / .75); }
+html[data-evento="estreno"] .ember:nth-child(3n) { background: rgb(var(--est-cian)); box-shadow: 0 0 8px 2px rgb(var(--est-cian) / .7); }
+html[data-evento="estreno"] .ember:nth-child(3n+1) { background: rgb(var(--est-naranja)); box-shadow: 0 0 8px 2px rgb(var(--est-naranja) / .7); }
+
+/* 5 · Paneles laterales (Carrito y Avisos): borde rosa y halo de neón solo con el panel ABIERTO (cerrado, inert, espera fuera de pantalla y su sombra se asomaría por el borde derecho) */
+html[data-evento="estreno"] :is(#cart, #avisos) { border-left-color: rgb(var(--est-rosa) / .65); }
+html[data-evento="estreno"] :is(#cart, #avisos):not([inert]) { box-shadow: -16px 0 44px -18px rgb(var(--est-rosa) / .6), 0 25px 50px -12px rgba(0, 0, 0, .55); }
+html[data-evento="estreno"][data-theme="light"] :is(#cart, #avisos):not([inert]) { box-shadow: -16px 0 40px -18px rgb(var(--est-rosa) / .4), 0 25px 50px -12px rgba(0, 0, 0, .25); }
+html[data-evento="estreno"] :is(.safe-cart-top, .safe-avisos-top) { border-bottom-color: rgb(var(--est-rosa) / .55); }
+html[data-evento="estreno"] .safe-cart-bottom { border-top-color: rgb(var(--est-rosa) / .55); }
+
 /* ═════════════════ PLANTILLA · EVENTO NUEVO (Verano, Pascua, Día de la Madre…) ═════════════════
    El próximo evento se suma con DOS pasos, sin tocar ninguna lógica: (1) una sección como esta en este archivo y (2) cambiar activeEvent en event-manager.js.
    Cómo usarla:
